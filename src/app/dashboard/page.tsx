@@ -65,90 +65,102 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
-        <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
+        <Loader2 className="animate-spin" size={20} style={{ color: '#cccccc' }} />
       </div>
     )
   }
 
-  const statusLabel: Record<string, { label: string; color: string }> = {
-    pending: { label: '確認待ち', color: '#c9b99a' },
-    confirmed: { label: '確定', color: '#6b7c5c' },
-    cancelled: { label: 'キャンセル', color: '#85403b' },
+  const statusLabel: Record<string, string> = {
+    pending: '確認待ち',
+    confirmed: '確定',
+    cancelled: 'キャンセル',
   }
 
   const quickLinks = role === 'consumer'
-    ? [{ href: '/search', label: '美容師を探す', sub: 'Find Artists' }, { href: '/bookings', label: '予約一覧', sub: 'My Bookings' }]
+    ? [{ href: '/search', label: '美容師を探す', sub: 'FIND ARTISTS' }, { href: '/bookings', label: '予約一覧', sub: 'MY BOOKINGS' }]
     : role === 'hairdresser'
-    ? [{ href: '/schedule', label: 'スケジュール', sub: 'Schedule' }, { href: '/requests', label: 'リクエスト', sub: 'Requests' }, { href: '/profile/edit', label: 'プロフィール', sub: 'Profile' }]
-    : [{ href: '/slots', label: '空き枠管理', sub: 'Slots' }, { href: '/space/edit', label: 'スペース編集', sub: 'Space' }]
+    ? [{ href: '/schedule', label: 'スケジュール', sub: 'SCHEDULE' }, { href: '/requests', label: 'リクエスト', sub: 'REQUESTS' }, { href: '/profile/edit', label: 'プロフィール', sub: 'PROFILE' }]
+    : [{ href: '/slots', label: '空き枠管理', sub: 'SLOTS' }, { href: '/space/edit', label: 'スペース編集', sub: 'SPACE' }]
 
   return (
-    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#ffffff', color: '#111111', fontWeight: 300, letterSpacing: '0.04em' }}>
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
         <div className="mb-16">
-          <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>DASHBOARD</p>
-          <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>
+          <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>DASHBOARD</p>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>
             こんにちは、{name}
           </h1>
         </div>
 
         {/* Quick links */}
-        <div className="grid sm:grid-cols-3 gap-0 border mb-16" style={{ borderColor: '#e2dcd4' }}>
+        <div className="grid sm:grid-cols-3 mb-16" style={{ border: '1px solid #ebebeb' }}>
           {quickLinks.map((l, i) => (
             <Link
               key={l.href}
               href={l.href}
-              className="p-8 transition-colors group"
+              className="p-8 group"
               style={{
-                borderRight: i < quickLinks.length - 1 ? '1px solid #e2dcd4' : 'none',
+                borderRight: i < quickLinks.length - 1 ? '1px solid #ebebeb' : 'none',
                 background: 'transparent',
+                display: 'block',
+                textDecoration: 'none',
               }}
             >
-              <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>{l.sub.toUpperCase()}</p>
-              <p className="text-base" style={{ color: '#1a1410' }}>{l.label}</p>
-              <p className="text-xs mt-3 transition-opacity opacity-0 group-hover:opacity-100" style={{ color: '#6b7c5c' }}>→</p>
+              <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>{l.sub}</p>
+              <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{l.label}</p>
+              <p style={{ fontSize: '0.75rem', marginTop: '0.75rem', color: '#999999', fontWeight: 300 }}>→</p>
             </Link>
           ))}
         </div>
 
         {/* Bookings */}
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-serif text-xl" style={{ fontWeight: 300 }}>最近の予約</h2>
-          </div>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 100, color: '#111111', marginBottom: '1.5rem', letterSpacing: '0.04em' }}>最近の予約</h2>
 
           {bookings.length === 0 ? (
-            <div className="py-20 text-center border" style={{ borderColor: '#e2dcd4' }}>
-              <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>NO BOOKINGS YET</p>
+            <div style={{ paddingTop: '5rem', paddingBottom: '5rem', textAlign: 'center', border: '1px solid #ebebeb' }}>
+              <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', fontWeight: 300 }}>NO BOOKINGS YET</p>
               {role === 'consumer' && (
-                <Link href="/search" className="inline-block mt-4 text-xs underline underline-offset-4" style={{ color: '#6b7c5c' }}>
+                <Link
+                  href="/search"
+                  style={{
+                    display: 'inline-block',
+                    marginTop: '1rem',
+                    fontSize: '0.75rem',
+                    color: '#999999',
+                    fontWeight: 300,
+                    borderBottom: '1px solid #999999',
+                    textDecoration: 'none',
+                    paddingBottom: '2px',
+                    letterSpacing: '0.04em',
+                  }}
+                >
                   美容師を探す →
                 </Link>
               )}
             </div>
           ) : (
-            <div className="border" style={{ borderColor: '#e2dcd4' }}>
-              {bookings.map((b, i) => {
-                const s = statusLabel[b.status] || statusLabel.pending
-                return (
-                  <div
-                    key={b.id}
-                    className="px-6 py-5 flex items-center justify-between gap-4"
-                    style={{ borderBottom: i < bookings.length - 1 ? '1px solid #ede9e2' : 'none' }}
-                  >
-                    <div>
-                      <p className="text-sm" style={{ color: '#1a1410' }}>{b.menu || '未指定'}</p>
-                      <p className="text-xs mt-1" style={{ color: '#a09890' }}>
-                        {b.slots?.date} {b.slots?.start_time?.slice(0, 5)}–{b.slots?.end_time?.slice(0, 5)}
-                      </p>
-                    </div>
-                    <span className="text-xs tracking-widest" style={{ color: s.color }}>{s.label}</span>
+            <div style={{ border: '1px solid #ebebeb' }}>
+              {bookings.map((b, i) => (
+                <div
+                  key={b.id}
+                  className="px-6 py-5 flex items-center justify-between gap-4"
+                  style={{ borderBottom: i < bookings.length - 1 ? '1px solid #ebebeb' : 'none' }}
+                >
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{b.menu || '未指定'}</p>
+                    <p style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: '#999999', fontWeight: 300 }}>
+                      {b.slots?.date} {b.slots?.start_time?.slice(0, 5)}–{b.slots?.end_time?.slice(0, 5)}
+                    </p>
                   </div>
-                )
-              })}
+                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.15em', color: '#999999', fontWeight: 300 }}>
+                    {statusLabel[b.status] || statusLabel.pending}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -1,32 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Noto+Serif+JP:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;200;300;400&family=Noto+Serif+JP:wght@200;300&display=swap');
 @import "tailwindcss";
+@import 'leaflet/dist/leaflet.css';
 
 :root {
-  --bg: #f7f4ef;
-  --bg-card: #faf9f7;
-  --bg-subtle: #f0ece4;
-  --fg: #1a1410;
-  --fg-muted: #6b6459;
-  --fg-faint: #a09890;
-  --border: #e2dcd4;
-  --border-light: #ede9e2;
-  --accent: #6b7c5c;
-  --accent-hover: #5a6b4c;
-  --accent-warm: #85403b;
-  --sand: #c9b99a;
-}
-
-@theme inline {
-  --color-bg: var(--bg);
-  --color-card: var(--bg-card);
-  --color-subtle: var(--bg-subtle);
-  --color-fg: var(--fg);
-  --color-muted: var(--fg-muted);
-  --color-faint: var(--fg-faint);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-warm: var(--accent-warm);
-  --color-sand: var(--sand);
+  --white: #ffffff;
+  --off-white: #fafafa;
+  --gray-50: #f5f5f5;
+  --gray-100: #ebebeb;
+  --gray-200: #d8d8d8;
+  --gray-400: #999999;
+  --gray-600: #666666;
+  --gray-800: #333333;
+  --black: #111111;
 }
 
 * {
@@ -38,34 +23,30 @@ html {
 }
 
 body {
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--white);
+  color: var(--black);
   font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0.02em;
-}
-
-h1, h2, h3, .serif {
-  font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
   letter-spacing: 0.04em;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
-.font-serif {
-  font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+.font-thin { font-weight: 100; }
+.font-extralight { font-weight: 200; }
+
+/* Reset heading weight to thin */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 200;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
 }
 
 input, select, textarea, button {
   font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Thin divider */
-.divider {
-  width: 40px;
-  height: 1px;
-  background: var(--border);
-  margin: 0 auto;
-}

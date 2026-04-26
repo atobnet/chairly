@@ -3,18 +3,34 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
-import type { Slot, Profile } from '@/types'
+import type { Profile } from '@/types'
 
 interface BookingRequest {
   id: string
-  slot_id: string
+  slot_id: string | null
+  hairdresser_availability_id: string | null
+  salon_availability_id: string | null
+  salon_id: string | null
   consumer_id: string
   menu: string | null
   message: string | null
   status: 'pending' | 'confirmed' | 'cancelled'
+  booked_date: string | null
+  booked_start_time: string | null
+  booked_end_time: string | null
   created_at: string
-  slots: Slot | null
   profiles: Profile | null
+  hairdresser_availability?: {
+    date: string
+    start_time: string
+    end_time: string
+  } | null
+  salons?: { profiles?: { name: string } } | null
+  slots?: {
+    date: string
+    start_time: string
+    end_time: string
+  } | null
 }
 
 export default function RequestsPage() {
@@ -27,13 +43,32 @@ export default function RequestsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // 新スキーマ: hairdresser_availability から自分のものを取得
+      const { data: myAvail } = await supabase
+        .from('hairdresser_availability')
+        .select('id')
+        .eq('hairdresser_id', user.id)
+
+      const availIds = (myAvail || []).map((a: { id: string }) => a.id)
+
+      // 旧スキーマ: slots から取得
       const { data: slots } = await supabase.from('slots').select('id').eq('hairdresser_id', user.id)
       const slotIds = (slots || []).map((s: { id: string }) => s.id)
 
-      if (slotIds.length > 0) {
+      const conditions = []
+      if (availIds.length > 0) conditions.push(`hairdresser_availability_id.in.(${availIds.join(',')})`)
+      if (slotIds.length > 0) conditions.push(`slot_id.in.(${slotIds.join(',')})`)
+
+      if (conditions.length > 0) {
         const { data } = await supabase.from('bookings')
-          .select('*, slots(*), profiles(id, name, avatar_url, role, created_at)')
-          .in('slot_id', slotIds)
+          .select(`
+            *,
+            profiles(id, name, avatar_url, role, created_at),
+            hairdresser_availability(date, start_time, end_time),
+            salons(profiles(name)),
+            slots(date, start_time, end_time)
+          `)
+          .or(conditions.join(','))
           .order('created_at', { ascending: false })
         setRequests((data || []) as BookingRequest[])
       }
@@ -42,88 +77,110 @@ export default function RequestsPage() {
     load()
   }, [])
 
-  const handleConfirm = async (bookingId: string, slotId: string) => {
+  const handleConfirm = async (bookingId: string) => {
     await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId)
-    await supabase.from('slots').update({ status: 'booked' }).eq('id', slotId)
+    // 旧スキーマ対応: slot_id がある場合は booked に更新
+    const req = requests.find(r => r.id === bookingId)
+    if (req?.slot_id) {
+      await supabase.from('slots').update({ status: 'booked' }).eq('id', req.slot_id)
+    }
     setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'confirmed' } : r))
   }
 
-  const handleCancel = async (bookingId: string, slotId: string) => {
+  const handleCancel = async (bookingId: string) => {
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId)
-    await supabase.from('slots').update({ status: 'available' }).eq('id', slotId)
+    const req = requests.find(r => r.id === bookingId)
+    if (req?.slot_id) {
+      await supabase.from('slots').update({ status: 'available' }).eq('id', req.slot_id)
+    }
     setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'cancelled' } : r))
   }
 
-  const statusColor: Record<string, string> = { pending: '#c9b99a', confirmed: '#6b7c5c', cancelled: '#85403b' }
+  const getDate = (r: BookingRequest): string => {
+    if (r.booked_date) return r.booked_date
+    if (r.hairdresser_availability?.date) return r.hairdresser_availability.date
+    return r.slots?.date || ''
+  }
+
+  const getTime = (r: BookingRequest): string => {
+    if (r.booked_start_time && r.booked_end_time) {
+      return `${r.booked_start_time.slice(0, 5)}–${r.booked_end_time.slice(0, 5)}`
+    }
+    if (r.slots?.start_time) {
+      return `${r.slots.start_time.slice(0, 5)}–${r.slots.end_time.slice(0, 5)}`
+    }
+    return ''
+  }
+
   const statusLabel: Record<string, string> = { pending: '確認待ち', confirmed: '確定', cancelled: 'キャンセル' }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
-      <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
+      <Loader2 className="animate-spin" size={20} style={{ color: '#cccccc' }} />
     </div>
   )
 
   return (
-    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#ffffff', color: '#111111', fontWeight: 300, letterSpacing: '0.04em' }}>
       <div className="max-w-3xl mx-auto">
         <div className="mb-16">
-          <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>REQUESTS</p>
-          <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>予約リクエスト</h1>
+          <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>REQUESTS</p>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>予約リクエスト</h1>
         </div>
 
         {requests.length === 0 ? (
-          <div className="py-20 text-center border" style={{ borderColor: '#e2dcd4' }}>
-            <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>NO REQUESTS YET</p>
+          <div style={{ paddingTop: '5rem', paddingBottom: '5rem', textAlign: 'center', border: '1px solid #ebebeb' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', fontWeight: 300 }}>NO REQUESTS YET</p>
           </div>
         ) : (
           <div className="space-y-4">
             {requests.map((req) => (
-              <div key={req.id} className="border p-6" style={{ borderColor: '#e2dcd4' }}>
+              <div key={req.id} style={{ border: '1px solid #ebebeb', padding: '1.5rem' }}>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#1a1410' }}>{req.profiles?.name || '不明'}</p>
-                    <p className="text-xs mt-1" style={{ color: '#a09890' }}>
+                    <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{req.profiles?.name || '不明'}</p>
+                    <p style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: '#999999', fontWeight: 300 }}>
                       {new Date(req.created_at).toLocaleDateString('ja-JP')} リクエスト
                     </p>
                   </div>
-                  <span className="text-xs tracking-widest" style={{ color: statusColor[req.status] }}>
+                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.15em', color: '#999999', fontWeight: 300 }}>
                     {statusLabel[req.status]}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4 py-4 border-y" style={{ borderColor: '#ede9e2' }}>
+                <div className="grid grid-cols-2 gap-4 mb-4 py-4" style={{ borderTop: '1px solid #ebebeb', borderBottom: '1px solid #ebebeb' }}>
                   <div>
-                    <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>DATE & TIME</p>
-                    <p className="text-sm" style={{ color: '#1a1410' }}>
-                      {req.slots?.date}　{req.slots?.start_time?.slice(0, 5)}–{req.slots?.end_time?.slice(0, 5)}
+                    <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.375rem', fontWeight: 300 }}>DATE & TIME</p>
+                    <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>
+                      {getDate(req)}　{getTime(req)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>MENU</p>
-                    <p className="text-sm" style={{ color: '#1a1410' }}>{req.menu || '未指定'}</p>
+                    <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.375rem', fontWeight: 300 }}>MENU</p>
+                    <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{req.menu || '未指定'}</p>
                   </div>
+                  {req.salons?.profiles?.name && (
+                    <div>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.375rem', fontWeight: 300 }}>SALON</p>
+                      <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{req.salons.profiles.name}</p>
+                    </div>
+                  )}
                 </div>
 
                 {req.message && (
-                  <p className="text-xs leading-relaxed mb-4 italic" style={{ color: '#6b6459' }}>
+                  <p style={{ fontSize: '0.75rem', lineHeight: '1.6', marginBottom: '1rem', color: '#999999', fontWeight: 300, fontStyle: 'italic' }}>
                     "{req.message}"
                   </p>
                 )}
 
                 {req.status === 'pending' && (
                   <div className="flex gap-3">
-                    <button
-                      onClick={() => handleCancel(req.id, req.slot_id)}
-                      className="flex-1 py-2.5 text-xs tracking-widest border transition-all hover:opacity-70"
-                      style={{ borderColor: '#e2dcd4', color: '#85403b' }}
-                    >
+                    <button onClick={() => handleCancel(req.id)}
+                      style={{ flex: 1, padding: '0.625rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #ebebeb', color: '#999999', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}>
                       キャンセル
                     </button>
-                    <button
-                      onClick={() => handleConfirm(req.id, req.slot_id)}
-                      className="flex-1 py-2.5 text-xs tracking-widest border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]"
-                      style={{ borderColor: '#1a1410', color: '#1a1410' }}
-                    >
+                    <button onClick={() => handleConfirm(req.id)}
+                      style={{ flex: 1, padding: '0.625rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#ffffff', background: '#111111', cursor: 'pointer', fontWeight: 300 }}>
                       確認する
                     </button>
                   </div>

@@ -2,10 +2,13 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Hairdresser, Profile, Slot } from '@/types'
+import dynamic from 'next/dynamic'
+import type { Hairdresser, Profile, Salon, AvailableSlot, MenuItem } from '@/types'
+
+const SalonMap = dynamic(() => import('@/components/SalonMap'), { ssr: false })
 
 interface HairdresserWithProfile extends Hairdresser {
   profiles: Profile
@@ -24,14 +27,33 @@ function getWeekDates(offset = 0) {
   })
 }
 
+function generateTimeSlots(slot: AvailableSlot, durationMinutes: number): string[] {
+  const slots: string[] = []
+  const [sh, sm] = slot.available_from.slice(0, 5).split(':').map(Number)
+  const [eh, em] = slot.available_until.slice(0, 5).split(':').map(Number)
+  let current = sh * 60 + sm
+  const end = eh * 60 + em - durationMinutes
+  while (current <= end) {
+    const h = Math.floor(current / 60).toString().padStart(2, '0')
+    const m = (current % 60).toString().padStart(2, '0')
+    slots.push(`${h}:${m}`)
+    current += 30
+  }
+  return slots
+}
+
 export default function HairdresserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [hairdresser, setHairdresser] = useState<HairdresserWithProfile | null>(null)
-  const [availableSlots, setAvailableSlots] = useState<Slot[]>([])
+  const [salons, setSalons] = useState<(Salon & { profiles?: { name: string } })[]>([])
+  const [selectedMenu, setSelectedMenu] = useState<MenuItem | null>(null)
+  const [selectedSalon, setSelectedSalon] = useState<(Salon & { profiles?: { name: string } }) | null>(null)
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([])
   const [weekOffset, setWeekOffset] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
-  const [menu, setMenu] = useState('')
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
+  const [selectedTime, setSelectedTime] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -43,44 +65,104 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id || null)
-      const { data } = await supabase.from('hairdressers').select('*, profiles(id, name, avatar_url, role, created_at)').eq('id', id).single()
-      setHairdresser(data as HairdresserWithProfile)
+
+      const [{ data: hData }, { data: hsData }] = await Promise.all([
+        supabase.from('hairdressers').select('*, profiles(id, name, avatar_url, role, created_at)').eq('id', id).single(),
+        supabase.from('hairdresser_salons').select('*, salons(*, profiles(name))').eq('hairdresser_id', id).eq('status', 'active'),
+      ])
+
+      setHairdresser(hData as HairdresserWithProfile)
+      const salonList = (hsData || []).map((hs: { salons: unknown }) => hs.salons).filter(Boolean) as (Salon & { profiles?: { name: string } })[]
+      setSalons(salonList)
       setLoading(false)
     }
     load()
   }, [id])
 
-  useEffect(() => { loadSlots() }, [id, weekOffset])
-
   useEffect(() => {
-    const channel = supabase.channel('slots-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots', filter: `hairdresser_id=eq.${id}` }, () => loadSlots())
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [id, weekOffset])
+    if (selectedSalon) {
+      loadAvailableSlots(selectedSalon.id)
+    } else {
+      setAvailableSlots([])
+    }
+  }, [selectedSalon, weekOffset])
 
-  const loadSlots = async () => {
+  const loadAvailableSlots = async (salonId: string) => {
+    setSlotsLoading(true)
     const dates = getWeekDates(weekOffset)
     const from = dates[0].toISOString().split('T')[0]
     const to = dates[6].toISOString().split('T')[0]
-    const { data } = await supabase.from('slots').select('*').eq('hairdresser_id', id).eq('status', 'available').gte('date', from).lte('date', to).order('date').order('start_time')
-    setAvailableSlots(data || [])
+
+    const { data } = await supabase
+      .from('available_slots')
+      .select('*')
+      .eq('hairdresser_id', id)
+      .eq('salon_id', salonId)
+      .gte('date', from)
+      .lte('date', to)
+      .order('date')
+      .order('available_from')
+
+    setAvailableSlots((data || []) as AvailableSlot[])
+    setSlotsLoading(false)
+  }
+
+  const handleSelectMenu = (menu: MenuItem) => {
+    if (selectedMenu?.name === menu.name) {
+      setSelectedMenu(null)
+      setSelectedSalon(null)
+      setSelectedSlot(null)
+      setSelectedTime('')
+    } else {
+      setSelectedMenu(menu)
+      setSelectedSlot(null)
+      setSelectedTime('')
+    }
+  }
+
+  const handleSelectSalon = (salon: Salon & { profiles?: { name: string } }) => {
+    if (selectedSalon?.id === salon.id) {
+      setSelectedSalon(null)
+      setSelectedSlot(null)
+      setSelectedTime('')
+    } else {
+      setSelectedSalon(salon)
+      setSelectedSlot(null)
+      setSelectedTime('')
+    }
+  }
+
+  const handleSelectTimeSlot = (slot: AvailableSlot, time: string) => {
+    setSelectedSlot(slot)
+    setSelectedTime(time)
   }
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedSlot || !currentUserId) { router.push('/login'); return }
+    if (!selectedSlot || !selectedSalon || !selectedMenu || !currentUserId) { router.push('/login'); return }
     setSubmitting(true)
 
-    const { error: updateError } = await supabase.from('slots').update({ status: 'reserved' }).eq('id', selectedSlot.id).eq('status', 'available')
-    if (updateError) { alert('この枠は既に予約済みです'); setSubmitting(false); await loadSlots(); return }
+    const duration = selectedMenu.duration ?? 60
+    const [startH, startM] = selectedTime.split(':').map(Number)
+    const endMinutes = startH * 60 + startM + duration
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}:00`
 
-    const { error: bookingError } = await supabase.from('bookings').insert({ slot_id: selectedSlot.id, consumer_id: currentUserId, menu, message, status: 'pending' })
-    if (bookingError) { await supabase.from('slots').update({ status: 'available' }).eq('id', selectedSlot.id); alert('予約に失敗しました'); setSubmitting(false); return }
+    const { error } = await supabase.from('bookings').insert({
+      hairdresser_availability_id: selectedSlot.hairdresser_availability_id,
+      salon_availability_id: selectedSlot.salon_availability_id,
+      salon_id: selectedSalon.id,
+      consumer_id: currentUserId,
+      menu: selectedMenu.name,
+      message,
+      status: 'pending',
+      booked_date: selectedSlot.date,
+      booked_start_time: selectedTime + ':00',
+      booked_end_time: endTime,
+    })
 
+    if (error) { alert('予約に失敗しました'); setSubmitting(false); return }
     setSubmitted(true)
     setSubmitting(false)
-    await loadSlots()
   }
 
   const getSlotsForDate = (date: Date) => {
@@ -89,180 +171,371 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
-      <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
+      <Loader2 className="animate-spin" size={20} style={{ color: '#cccccc' }} />
     </div>
   )
 
   if (!hairdresser) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
       <div className="text-center">
-        <p className="text-xs tracking-widest mb-4" style={{ color: '#a09890' }}>NOT FOUND</p>
-        <Link href="/search" className="text-xs underline underline-offset-4" style={{ color: '#6b7c5c' }}>← 検索に戻る</Link>
+        <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1rem', fontWeight: 300 }}>NOT FOUND</p>
+        <Link href="/search" style={{ fontSize: '0.75rem', color: '#999999', fontWeight: 300, borderBottom: '1px solid #999999', textDecoration: 'none', paddingBottom: '2px' }}>← 検索に戻る</Link>
       </div>
     </div>
   )
 
   const dates = getWeekDates(weekOffset)
-  const inputStyle = { background: 'transparent', borderColor: '#e2dcd4', color: '#1a1410' }
+  const duration = selectedMenu?.duration ?? 60
+
+  const underlineInput: React.CSSProperties = {
+    width: '100%',
+    padding: '0.5rem 0',
+    fontSize: '0.875rem',
+    border: 'none',
+    borderBottom: '1px solid #ebebeb',
+    outline: 'none',
+    background: 'transparent',
+    color: '#111111',
+    fontWeight: 300,
+    letterSpacing: '0.04em',
+  }
+
+  // ステップ表示ヘルパー
+  const StepLabel = ({ num, label, done, active }: { num: number; label: string; done: boolean; active: boolean }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+      <div style={{
+        width: '1.25rem', height: '1.25rem', borderRadius: '50%', flexShrink: 0,
+        background: done ? '#111111' : active ? '#111111' : 'transparent',
+        border: done || active ? '1px solid #111111' : '1px solid #cccccc',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '0.55rem', color: done || active ? '#ffffff' : '#cccccc', fontWeight: 400,
+      }}>
+        {done ? <Check size={8} strokeWidth={3} /> : num}
+      </div>
+      <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: active || done ? '#111111' : '#cccccc', fontWeight: 300 }}>{label}</p>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#ffffff', color: '#111111', fontWeight: 300, letterSpacing: '0.04em' }}>
       <div className="max-w-3xl mx-auto">
-        <Link href="/search" className="inline-flex items-center gap-1 text-xs tracking-widest mb-12 transition-opacity hover:opacity-60" style={{ color: '#a09890' }}>
+        <Link href="/search" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.65rem', letterSpacing: '0.2em', color: '#cccccc', textDecoration: 'none', marginBottom: '3rem', fontWeight: 300 }}>
           <ChevronLeft size={12} /> BACK
         </Link>
 
         {/* Profile */}
         <div className="grid md:grid-cols-2 gap-12 mb-20">
-          {/* Photo */}
-          <div className="aspect-[4/5] flex items-center justify-center" style={{ background: '#f0ece4' }}>
+          <div className="aspect-[4/5] flex items-center justify-center" style={{ background: '#f5f5f5' }}>
             {hairdresser.profiles?.avatar_url ? (
-              <img src={hairdresser.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+              <img src={hairdresser.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div className="text-center">
-                <div className="font-serif text-8xl mb-2" style={{ color: '#e2dcd4', fontWeight: 300 }}>{hairdresser.profiles?.name?.[0]}</div>
-              </div>
+              <div style={{ fontSize: '5rem', fontWeight: 100, color: '#cccccc' }}>{hairdresser.profiles?.name?.[0]}</div>
             )}
           </div>
 
-          {/* Info */}
-          <div className="flex flex-col justify-center">
-            <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>{hairdresser.area}</p>
-            <h1 className="font-serif text-4xl mb-2" style={{ fontWeight: 300 }}>{hairdresser.profiles?.name}</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>{hairdresser.area}</p>
+            <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: '0 0 1.5rem' }}>{hairdresser.profiles?.name}</h1>
 
             {hairdresser.instagram_url && (
-              <a href={hairdresser.instagram_url} target="_blank" rel="noopener noreferrer" className="text-xs tracking-widest mb-6 hover:opacity-60 transition-opacity" style={{ color: '#c9b99a' }}>
+              <a href={hairdresser.instagram_url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: '0.65rem', letterSpacing: '0.2em', color: '#999999', textDecoration: 'none', marginBottom: '1.5rem', display: 'block' }}>
                 INSTAGRAM →
               </a>
             )}
 
-            <div className="w-8 h-px my-6" style={{ background: '#e2dcd4' }} />
+            <div style={{ width: '2rem', height: '1px', background: '#ebebeb', margin: '1rem 0' }} />
 
             {hairdresser.bio && (
-              <p className="text-sm leading-loose mb-8" style={{ color: '#6b6459', fontWeight: 300 }}>{hairdresser.bio}</p>
+              <p style={{ fontSize: '0.875rem', lineHeight: '1.8', color: '#999999', fontWeight: 300 }}>{hairdresser.bio}</p>
             )}
+          </div>
+        </div>
 
-            {hairdresser.menus && hairdresser.menus.length > 0 && (
-              <div>
-                <p className="text-xs tracking-widest mb-4" style={{ color: '#a09890' }}>MENU & PRICE</p>
-                <div className="space-y-2">
-                  {hairdresser.menus.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm py-2 border-b" style={{ borderColor: '#ede9e2' }}>
-                      <span style={{ color: '#1a1410' }}>{m.name}</span>
-                      <span style={{ color: '#6b7c5c' }}>¥{m.price.toLocaleString()}</span>
+        {/* ── STEP 1: メニュー選択 ── */}
+        <div className="mb-16" style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+          <StepLabel num={1} label="MENU" done={!!selectedMenu} active={!selectedMenu} />
+
+          {!hairdresser.menus?.length ? (
+            <div style={{ padding: '2rem', border: '1px solid #ebebeb', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#cccccc', fontWeight: 300 }}>メニューが登録されていません</p>
+            </div>
+          ) : (() => {
+            const categoryOrder = ['組み合わせメニュー', 'カット', 'カラー', 'パーマ', '縮毛矯正', 'その他']
+            const groups = hairdresser.menus!.reduce((acc, m) => {
+              const cat = m.category || 'その他'
+              ;(acc[cat] = acc[cat] || []).push(m)
+              return acc
+            }, {} as Record<string, MenuItem[]>)
+            const cats = Object.keys(groups).sort((a, b) => {
+              const ai = categoryOrder.indexOf(a), bi = categoryOrder.indexOf(b)
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+            })
+            return (
+              <div style={{ border: '1px solid #ebebeb' }}>
+                {cats.map((cat, ci) => (
+                  <div key={cat}>
+                    <div style={{ padding: '0.5rem 1.25rem', background: '#f9f9f9', borderBottom: '1px solid #ebebeb', borderTop: ci > 0 ? '1px solid #d8d8d8' : 'none' }}>
+                      <span style={{ fontSize: '0.6rem', letterSpacing: '0.25em', color: '#888888', fontWeight: 300 }}>{cat}</span>
                     </div>
-                  ))}
+                    {groups[cat].map((m, i) => {
+                      const isSelected = selectedMenu?.name === m.name
+                      const dur = m.duration ?? 60
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleSelectMenu(m)}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            width: '100%', padding: '0.875rem 1.25rem',
+                            borderBottom: i < groups[cat].length - 1 ? '1px solid #f0f0f0' : 'none',
+                            background: isSelected ? '#111111' : 'transparent',
+                            color: isSelected ? '#ffffff' : '#111111',
+                            cursor: 'pointer', fontWeight: 300, textAlign: 'left',
+                            transition: 'background 0.15s', border: 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                            {isSelected && <Check size={12} strokeWidth={2.5} style={{ marginTop: '0.25rem', flexShrink: 0 }} />}
+                            <div style={{ minWidth: 0 }}>
+                              <span style={{ fontSize: '0.875rem' }}>{m.name}</span>
+                              {m.description && (
+                                <p style={{ fontSize: '0.7rem', color: isSelected ? 'rgba(255,255,255,0.55)' : '#aaaaaa', marginTop: '0.2rem', fontWeight: 300, lineHeight: 1.5 }}>{m.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0, marginLeft: '1rem' }}>
+                            <span style={{ fontSize: '0.7rem', color: isSelected ? 'rgba(255,255,255,0.5)' : '#cccccc' }}>{dur}分</span>
+                            <span style={{ fontSize: '0.875rem', color: isSelected ? 'rgba(255,255,255,0.8)' : '#999999' }}>¥{m.price.toLocaleString()}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* ── STEP 2: サロン選択 ── */}
+        <div className="mb-16" style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+          <StepLabel num={2} label="SALON" done={!!selectedSalon} active={!!selectedMenu && !selectedSalon} />
+
+          {!selectedMenu ? (
+            <div style={{ padding: '2.5rem', border: '1px solid #ebebeb', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#cccccc', fontWeight: 300 }}>先にメニューを選択してください</p>
+            </div>
+          ) : salons.length === 0 ? (
+            <div style={{ padding: '2rem', border: '1px solid #ebebeb', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#cccccc', fontWeight: 300 }}>利用可能なサロンがまだ登録されていません</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: '1rem', overflow: 'hidden', border: '1px solid #ebebeb' }}>
+                <SalonMap salons={salons} selectedSalonId={selectedSalon?.id || null} onSelect={handleSelectSalon} />
+              </div>
+              <div style={{ border: '1px solid #ebebeb' }}>
+                {salons.map((salon, i) => {
+                  const isSelected = selectedSalon?.id === salon.id
+                  return (
+                    <div key={salon.id} style={{ borderBottom: i < salons.length - 1 ? '1px solid #ebebeb' : 'none' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSalon(salon)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          width: '100%', padding: '1rem 1.25rem',
+                          background: isSelected ? '#111111' : 'transparent',
+                          color: isSelected ? '#ffffff' : '#111111',
+                          cursor: 'pointer', fontWeight: 300, textAlign: 'left',
+                          transition: 'all 0.15s', border: 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          {isSelected && <Check size={12} strokeWidth={2.5} />}
+                          <div>
+                            <p style={{ fontSize: '0.875rem', marginBottom: '0.125rem' }}>{salon.profiles?.name || 'サロン'}</p>
+                            <p style={{ fontSize: '0.75rem', color: isSelected ? 'rgba(255,255,255,0.6)' : '#999999' }}>{salon.address}</p>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: isSelected ? 'rgba(255,255,255,0.7)' : '#cccccc', flexShrink: 0, marginLeft: '1rem' }}>
+                          ¥{salon.price_per_hour.toLocaleString()}/h
+                        </span>
+                      </button>
+                      {isSelected && salon.lat && salon.lng && (
+                        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.75rem 1.25rem', background: '#f9f9f9', borderTop: '1px solid #e0e0e0' }}>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${salon.lat},${salon.lng}`} target="_blank" rel="noopener noreferrer"
+                            style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.65rem', letterSpacing: '0.1em', textAlign: 'center', border: '1px solid #ebebeb', color: '#555555', background: '#ffffff', textDecoration: 'none', fontWeight: 300 }}>
+                            地図を開く
+                          </a>
+                          <a href={`https://www.google.com/maps/dir/?api=1&destination=${salon.lat},${salon.lng}`} target="_blank" rel="noopener noreferrer"
+                            style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.65rem', letterSpacing: '0.1em', textAlign: 'center', border: '1px solid #111111', color: '#ffffff', background: '#111111', textDecoration: 'none', fontWeight: 300 }}>
+                            ルート案内
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {selectedSalon && (
+                <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                  <button onClick={() => { setSelectedSalon(null); setSelectedSlot(null); setSelectedTime('') }}
+                    style={{ fontSize: '0.7rem', color: '#999999', background: 'none', border: 'none', borderBottom: '1px solid #999999', padding: '0 0 1px', cursor: 'pointer', fontWeight: 300 }}>
+                    解除
+                  </button>
                 </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── STEP 3: 日時選択 ── */}
+        <div className="mb-16" style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <StepLabel num={3} label="DATE & TIME" done={!!(selectedSlot && selectedTime)} active={!!selectedMenu && !!selectedSalon} />
+            {selectedMenu && selectedSalon && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <button onClick={() => setWeekOffset(w => w - 1)}
+                  style={{ width: '1.75rem', height: '1.75rem', border: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', cursor: 'pointer', color: '#999999' }}>
+                  <ChevronLeft size={12} />
+                </button>
+                <span style={{ fontSize: '0.7rem', color: '#999999', fontWeight: 300 }}>
+                  {dates[0].toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}–{dates[6].toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                </span>
+                <button onClick={() => setWeekOffset(w => w + 1)}
+                  style={{ width: '1.75rem', height: '1.75rem', border: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', cursor: 'pointer', color: '#999999' }}>
+                  <ChevronRight size={12} />
+                </button>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Calendar */}
-        <div className="mb-16">
-          <div className="flex items-center justify-between mb-8">
-            <p className="text-xs tracking-[0.3em]" style={{ color: '#a09890' }}>AVAILABILITY</p>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setWeekOffset(w => w - 1)} className="w-7 h-7 border flex items-center justify-center transition-colors hover:bg-[#1a1410] hover:text-[#f7f4ef]" style={{ borderColor: '#e2dcd4', color: '#6b6459' }}>
-                <ChevronLeft size={12} />
-              </button>
-              <span className="text-xs" style={{ color: '#6b6459' }}>
-                {dates[0].toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}–{dates[6].toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
-              </span>
-              <button onClick={() => setWeekOffset(w => w + 1)} className="w-7 h-7 border flex items-center justify-center transition-colors hover:bg-[#1a1410] hover:text-[#f7f4ef]" style={{ borderColor: '#e2dcd4', color: '#6b6459' }}>
-                <ChevronRight size={12} />
-              </button>
-            </div>
-          </div>
-
-          <div className="border" style={{ borderColor: '#e2dcd4' }}>
-            <div className="grid grid-cols-7 border-b" style={{ borderColor: '#e2dcd4' }}>
-              {dates.map((date, i) => (
-                <div key={i} className="py-3 text-center border-r last:border-r-0" style={{ borderColor: '#e2dcd4' }}>
-                  <div className="text-xs mb-1" style={{ color: i === 0 ? '#85403b' : i === 6 ? '#6b7c5c' : '#a09890' }}>{DAYS[date.getDay()]}</div>
-                  <div className="text-sm font-medium" style={{ color: date.toDateString() === new Date().toDateString() ? '#6b7c5c' : '#1a1410' }}>{date.getDate()}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7">
-              {dates.map((date, i) => {
-                const slots = getSlotsForDate(date)
-                return (
-                  <div key={i} className="min-h-[120px] p-1.5 space-y-1 border-r last:border-r-0" style={{ borderColor: '#e2dcd4' }}>
-                    {slots.map(slot => (
-                      <button
-                        key={slot.id}
-                        onClick={() => setSelectedSlot(slot === selectedSlot ? null : slot)}
-                        className="w-full py-1.5 text-xs text-center border transition-all"
-                        style={{
-                          borderColor: selectedSlot?.id === slot.id ? '#1a1410' : '#c9b99a',
-                          background: selectedSlot?.id === slot.id ? '#1a1410' : 'rgba(201,185,154,0.1)',
-                          color: selectedSlot?.id === slot.id ? '#f7f4ef' : '#6b6459',
-                        }}
-                      >
-                        {slot.start_time.slice(0, 5)}
-                      </button>
-                    ))}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Booking form */}
-        {submitted ? (
-          <div className="py-16 text-center border" style={{ borderColor: '#6b7c5c' }}>
-            <p className="text-xs tracking-[0.3em] mb-4" style={{ color: '#6b7c5c' }}>REQUEST SENT</p>
-            <h3 className="font-serif text-2xl mb-4" style={{ fontWeight: 300 }}>予約リクエストを送信しました</h3>
-            <p className="text-xs mb-6" style={{ color: '#a09890' }}>美容師からの確認をお待ちください</p>
-            <Link href="/bookings" className="text-xs underline underline-offset-4" style={{ color: '#6b7c5c' }}>予約一覧を確認 →</Link>
-          </div>
-        ) : selectedSlot ? (
-          <div className="border p-8" style={{ borderColor: '#e2dcd4' }}>
-            <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#a09890' }}>BOOK APPOINTMENT</p>
-
-            <div className="mb-6 py-4 border-y" style={{ borderColor: '#ede9e2' }}>
-              <p className="text-sm" style={{ color: '#1a1410' }}>
-                {selectedSlot.date}　{selectedSlot.start_time.slice(0, 5)}–{selectedSlot.end_time.slice(0, 5)}
+          {!selectedMenu || !selectedSalon ? (
+            <div style={{ padding: '2.5rem', border: '1px solid #ebebeb', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#cccccc', fontWeight: 300 }}>
+                {!selectedMenu ? '先にメニューを選択してください' : '先にサロンを選択してください'}
               </p>
+            </div>
+          ) : slotsLoading ? (
+            <div style={{ padding: '3rem', border: '1px solid #ebebeb', textAlign: 'center' }}>
+              <Loader2 className="animate-spin mx-auto" size={16} style={{ color: '#cccccc' }} />
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.7rem', color: '#999999', marginBottom: '0.75rem', fontWeight: 300 }}>
+                {selectedSalon.profiles?.name} ・ {selectedMenu.name}（{duration}分）
+              </p>
+              <div style={{ border: '1px solid #ebebeb' }}>
+                <div className="grid grid-cols-7" style={{ borderBottom: '1px solid #ebebeb' }}>
+                  {dates.map((date, i) => (
+                    <div key={i} className="py-3 text-center" style={{ borderRight: i < 6 ? '1px solid #ebebeb' : 'none' }}>
+                      <div style={{ fontSize: '0.65rem', marginBottom: '0.25rem', color: '#cccccc', letterSpacing: '0.1em' }}>{DAYS[date.getDay()]}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{date.getDate()}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7">
+                  {dates.map((date, i) => {
+                    const daySlots = getSlotsForDate(date)
+                    const timeSlots = daySlots.flatMap(slot =>
+                      generateTimeSlots(slot, duration).map(t => ({ time: t, slot }))
+                    )
+                    return (
+                      <div key={i} style={{ minHeight: '8rem', padding: '0.375rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderRight: i < 6 ? '1px solid #ebebeb' : 'none' }}>
+                        {timeSlots.map(({ time, slot }) => (
+                          <button
+                            key={`${slot.hairdresser_availability_id}-${time}`}
+                            onClick={() => handleSelectTimeSlot(slot, time)}
+                            style={{
+                              width: '100%', padding: '0.25rem', fontSize: '0.7rem', textAlign: 'center',
+                              border: selectedSlot === slot && selectedTime === time ? '1px solid #111111' : '1px solid #ebebeb',
+                              background: selectedSlot === slot && selectedTime === time ? '#111111' : 'transparent',
+                              color: selectedSlot === slot && selectedTime === time ? '#ffffff' : '#999999',
+                              cursor: 'pointer', fontWeight: 300,
+                            }}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {availableSlots.length === 0 && (
+                <p style={{ fontSize: '0.75rem', color: '#cccccc', marginTop: '1rem', textAlign: 'center', fontWeight: 300 }}>
+                  この週に予約可能な枠がありません
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── 確認・送信 ── */}
+        {submitted ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', border: '1px solid #111111' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#111111', marginBottom: '1rem', fontWeight: 300 }}>REQUEST SENT</p>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 100, marginBottom: '1rem' }}>予約リクエストを送信しました</h3>
+            <p style={{ fontSize: '0.75rem', color: '#999999', marginBottom: '1.5rem', fontWeight: 300 }}>美容師からの確認をお待ちください</p>
+            <Link href="/bookings" style={{ fontSize: '0.75rem', color: '#999999', borderBottom: '1px solid #999999', textDecoration: 'none', paddingBottom: '2px', fontWeight: 300 }}>
+              予約一覧を確認 →
+            </Link>
+          </div>
+        ) : selectedSlot && selectedTime && selectedMenu ? (
+          <div style={{ border: '1px solid #ebebeb', padding: '2rem' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>CONFIRM BOOKING</p>
+
+            {/* 選択内容サマリー */}
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', border: '1px solid #ebebeb' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.25rem', fontWeight: 300 }}>MENU</p>
+                  <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{selectedMenu.name}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#999999', fontWeight: 300 }}>¥{selectedMenu.price.toLocaleString()} / {duration}分</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.25rem', fontWeight: 300 }}>SALON</p>
+                  <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{selectedSalon?.profiles?.name}</p>
+                </div>
+                <div className="col-span-2">
+                  <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.25rem', fontWeight: 300 }}>DATE & TIME</p>
+                  <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>
+                    {selectedSlot.date}　{selectedTime}–{(() => {
+                      const [h, m] = selectedTime.split(':').map(Number)
+                      const endMin = h * 60 + m + duration
+                      return `${Math.floor(endMin / 60).toString().padStart(2, '0')}:${(endMin % 60).toString().padStart(2, '0')}`
+                    })()}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <form onSubmit={handleBooking} className="space-y-5">
               <div>
-                <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>MENU</label>
-                <select value={menu} onChange={(e) => setMenu(e.target.value)} required className="w-full px-4 py-3 text-sm border focus:outline-none" style={inputStyle}>
-                  <option value="">選択してください</option>
-                  {hairdresser.menus?.map((m, i) => (
-                    <option key={i} value={m.name}>{m.name} — ¥{m.price.toLocaleString()}</option>
-                  ))}
-                  <option value="その他">その他</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>MESSAGE (任意)</label>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="ご要望・ご質問など" className="w-full px-4 py-3 text-sm border focus:outline-none resize-none" style={inputStyle} />
+                <label style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>MESSAGE（任意）</label>
+                <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} placeholder="ご要望・ご質問など"
+                  style={{ ...underlineInput, resize: 'none' }}
+                  onFocus={e => (e.target.style.borderBottomColor = '#111111')} onBlur={e => (e.target.style.borderBottomColor = '#ebebeb')} />
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setSelectedSlot(null)} className="flex-1 py-3 text-xs tracking-widest border transition-all" style={{ borderColor: '#e2dcd4', color: '#a09890' }}>
-                  キャンセル
+                <button type="button" onClick={() => { setSelectedSlot(null); setSelectedTime('') }}
+                  style={{ flex: 1, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #ebebeb', color: '#999999', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}>
+                  戻る
                 </button>
-                <button type="submit" disabled={submitting} className="flex-1 py-3 text-xs tracking-widest border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef] disabled:opacity-50 flex items-center justify-center gap-2" style={{ borderColor: '#1a1410', color: '#1a1410' }}>
+                <button type="submit" disabled={submitting}
+                  style={{ flex: 2, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#ffffff', background: '#111111', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 300, opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   {submitting && <Loader2 size={12} className="animate-spin" />}
                   予約リクエストを送る
                 </button>
               </div>
             </form>
           </div>
-        ) : (
-          <div className="py-12 text-center border" style={{ borderColor: '#e2dcd4' }}>
-            <p className="text-xs tracking-widest" style={{ color: '#c9b99a' }}>カレンダーから空き枠を選択してください</p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

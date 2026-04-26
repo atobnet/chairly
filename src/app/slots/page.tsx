@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Slot } from '@/types'
+import type { SalonAvailability, HairdresserAvailability } from '@/types'
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 const TIMES = Array.from({ length: 28 }, (_, i) => {
@@ -23,15 +23,24 @@ function getWeekDates(offset = 0) {
   })
 }
 
+function isOverlapping(a: { start_time: string; end_time: string }, b: { start_time: string; end_time: string }) {
+  return a.start_time < b.end_time && a.end_time > b.start_time
+}
+
+interface HairdresserAvailabilityWithProfile extends HairdresserAvailability {
+  hairdressers?: { profiles?: { name: string } }
+}
+
 export default function SlotsPage() {
   const [weekOffset, setWeekOffset] = useState(0)
-  const [slots, setSlots] = useState<Slot[]>([])
+  const [salonAvailability, setSalonAvailability] = useState<SalonAvailability[]>([])
+  const [hairdresserAvailability, setHairdresserAvailability] = useState<HairdresserAvailabilityWithProfile[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState('')
-  const [startTime, setStartTime] = useState('10:00')
-  const [endTime, setEndTime] = useState('12:00')
+  const [startTime, setStartTime] = useState('09:00')
+  const [endTime, setEndTime] = useState('20:00')
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
 
@@ -45,64 +54,84 @@ export default function SlotsPage() {
     load()
   }, [])
 
-  useEffect(() => { if (userId) loadSlots(userId) }, [weekOffset, userId])
+  useEffect(() => { if (userId) loadData(userId) }, [weekOffset, userId])
 
-  const loadSlots = async (uid: string) => {
+  const loadData = async (uid: string) => {
     const dates = getWeekDates(weekOffset)
     const from = dates[0].toISOString().split('T')[0]
     const to = dates[6].toISOString().split('T')[0]
-    const { data } = await supabase.from('slots').select('*').eq('salon_id', uid).gte('date', from).lte('date', to).order('date').order('start_time')
-    setSlots(data || [])
+
+    const [{ data: salonAvail }, { data: myHairdressers }] = await Promise.all([
+      supabase.from('salon_availability').select('*').eq('salon_id', uid).gte('date', from).lte('date', to).order('date').order('start_time'),
+      supabase.from('hairdresser_salons').select('hairdresser_id').eq('salon_id', uid).eq('status', 'active'),
+    ])
+
+    const hairdresserIds = (myHairdressers || []).map((h: { hairdresser_id: string }) => h.hairdresser_id)
+
+    let hdAvail: HairdresserAvailabilityWithProfile[] = []
+    if (hairdresserIds.length > 0) {
+      const { data } = await supabase
+        .from('hairdresser_availability')
+        .select('*, hairdressers!inner(profiles(name))')
+        .in('hairdresser_id', hairdresserIds)
+        .gte('date', from)
+        .lte('date', to)
+      hdAvail = (data || []) as HairdresserAvailabilityWithProfile[]
+    }
+
+    setSalonAvailability((salonAvail || []) as SalonAvailability[])
+    setHairdresserAvailability(hdAvail)
   }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!userId || !selectedDate) return
     setSaving(true)
-    await supabase.from('slots').insert({ salon_id: userId, date: selectedDate, start_time: startTime + ':00', end_time: endTime + ':00', status: 'available' })
-    await loadSlots(userId)
+    await supabase.from('salon_availability').insert({
+      salon_id: userId,
+      date: selectedDate,
+      start_time: startTime + ':00',
+      end_time: endTime + ':00',
+    })
+    await loadData(userId)
     setShowModal(false)
     setSaving(false)
   }
 
-  const handleDelete = async (slotId: string) => {
+  const handleDelete = async (id: string) => {
     if (!userId) return
-    await supabase.from('slots').delete().eq('id', slotId).eq('salon_id', userId)
-    setSlots(prev => prev.filter(s => s.id !== slotId))
+    await supabase.from('salon_availability').delete().eq('id', id).eq('salon_id', userId)
+    setSalonAvailability(prev => prev.filter(a => a.id !== id))
   }
 
   const dates = getWeekDates(weekOffset)
-  const getSlotsForDate = (date: Date) => {
+
+  const getDataForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0]
-    return slots.filter(s => s.date === dateStr)
+    const salon = salonAvailability.filter(a => a.date === dateStr)
+    const hd = hairdresserAvailability.filter(a => a.date === dateStr)
+    return { salon, hd }
   }
 
-  const statusStyle: Record<string, { border: string; bg: string; color: string }> = {
-    available: { border: '#e2dcd4', bg: 'rgba(240,236,228,0.5)', color: '#6b6459' },
-    reserved: { border: '#c9b99a', bg: 'rgba(201,185,154,0.1)', color: '#c9b99a' },
-    booked: { border: '#6b7c5c', bg: 'rgba(107,124,92,0.08)', color: '#6b7c5c' },
-  }
-
-  const selectStyle = { background: 'transparent', borderColor: '#e2dcd4', color: '#1a1410' }
+  const selectStyle = { background: 'transparent', borderColor: '#ebebeb', color: '#111111' }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
-      <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
+      <Loader2 className="animate-spin" size={20} style={{ color: '#cccccc' }} />
     </div>
   )
 
   return (
-    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#ffffff', color: '#111111', fontWeight: 300, letterSpacing: '0.04em' }}>
       <div className="max-w-5xl mx-auto">
         <div className="flex items-end justify-between mb-16">
           <div>
-            <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>SLOT MANAGEMENT</p>
-            <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>空き枠管理</h1>
+            <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>SLOT MANAGEMENT</p>
+            <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>空き枠管理</h1>
           </div>
           <button
             onClick={() => { setSelectedDate(dates[0].toISOString().split('T')[0]); setShowModal(true) }}
-            className="flex items-center gap-2 px-5 py-2.5 border text-xs tracking-widest transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]"
-            style={{ borderColor: '#1a1410', color: '#1a1410' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#111111', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}
           >
             <Plus size={12} />
             空き枠を追加
@@ -111,48 +140,62 @@ export default function SlotsPage() {
 
         {/* Week nav */}
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => setWeekOffset(w => w - 1)} className="w-8 h-8 border flex items-center justify-center transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]" style={{ borderColor: '#e2dcd4', color: '#6b6459' }}>
+          <button onClick={() => setWeekOffset(w => w - 1)}
+            style={{ width: '2rem', height: '2rem', border: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', cursor: 'pointer', color: '#999999' }}>
             <ChevronLeft size={14} />
           </button>
-          <span className="text-xs tracking-widest" style={{ color: '#6b6459' }}>
+          <span style={{ fontSize: '0.75rem', letterSpacing: '0.1em', color: '#999999', fontWeight: 300 }}>
             {dates[0]?.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })} — {dates[6]?.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
           </span>
-          <button onClick={() => setWeekOffset(w => w + 1)} className="w-8 h-8 border flex items-center justify-center transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]" style={{ borderColor: '#e2dcd4', color: '#6b6459' }}>
+          <button onClick={() => setWeekOffset(w => w + 1)}
+            style={{ width: '2rem', height: '2rem', border: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', cursor: 'pointer', color: '#999999' }}>
             <ChevronRight size={14} />
           </button>
-          {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="text-xs underline underline-offset-4" style={{ color: '#6b7c5c' }}>今週</button>}
+          {weekOffset !== 0 && (
+            <button onClick={() => setWeekOffset(0)}
+              style={{ fontSize: '0.75rem', color: '#999999', background: 'none', border: 'none', borderBottom: '1px solid #999999', padding: '0 0 1px 0', cursor: 'pointer', fontWeight: 300 }}>
+              今週
+            </button>
+          )}
         </div>
 
         {/* Calendar */}
-        <div className="border" style={{ borderColor: '#e2dcd4' }}>
-          <div className="grid grid-cols-7 border-b" style={{ borderColor: '#e2dcd4' }}>
+        <div style={{ border: '1px solid #ebebeb' }}>
+          <div className="grid grid-cols-7" style={{ borderBottom: '1px solid #ebebeb' }}>
             {dates.map((date, i) => (
-              <div key={i} className="py-3 text-center border-r last:border-r-0" style={{ borderColor: '#e2dcd4' }}>
-                <div className="text-xs mb-1" style={{ color: i === 0 ? '#85403b' : i === 6 ? '#6b7c5c' : '#a09890' }}>{DAYS[date.getDay()]}</div>
-                <div className="text-sm" style={{ color: '#1a1410' }}>{date.getDate()}</div>
+              <div key={i} className="py-3 text-center" style={{ borderRight: i < 6 ? '1px solid #ebebeb' : 'none' }}>
+                <div style={{ fontSize: '0.65rem', marginBottom: '0.25rem', color: '#cccccc', letterSpacing: '0.1em' }}>{DAYS[date.getDay()]}</div>
+                <div style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{date.getDate()}</div>
               </div>
             ))}
           </div>
           <div className="grid grid-cols-7">
             {dates.map((date, i) => {
-              const daySlots = getSlotsForDate(date)
+              const { salon, hd } = getDataForDate(date)
               return (
-                <div key={i} className="min-h-[180px] p-1.5 space-y-1 border-r last:border-r-0" style={{ borderColor: '#e2dcd4' }}>
-                  {daySlots.map(slot => {
-                    const ss = statusStyle[slot.status] || statusStyle.available
+                <div key={i} style={{ minHeight: '10rem', padding: '0.375rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderRight: i < 6 ? '1px solid #ebebeb' : 'none' }}>
+                  {salon.map(avail => {
+                    const overlapping = hd.filter(h => isOverlapping(avail, h))
                     return (
-                      <div key={slot.id} className="group relative px-2 py-1.5 text-xs border" style={{ borderColor: ss.border, background: ss.bg, color: ss.color }}>
-                        {slot.start_time.slice(0, 5)}
-                        {slot.status === 'available' && (
-                          <button onClick={() => handleDelete(slot.id)} className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100">
-                            <Trash2 size={9} />
-                          </button>
+                      <div key={avail.id} className="group relative" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem', border: '1px solid #ebebeb', background: 'transparent', color: '#999999', fontWeight: 300 }}>
+                        {avail.start_time.slice(0, 5)}–{avail.end_time.slice(0, 5)}
+                        {overlapping.length > 0 && (
+                          <div style={{ fontSize: '0.6rem', color: '#111111', marginTop: '0.125rem' }}>
+                            ◎ {overlapping.map(h => h.hairdressers?.profiles?.name || '').filter(Boolean).join(', ')}
+                          </div>
                         )}
+                        <button onClick={() => handleDelete(avail.id)}
+                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ color: '#999999', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
+                          <Trash2 size={9} />
+                        </button>
                       </div>
                     )
                   })}
-                  <button onClick={() => { setSelectedDate(date.toISOString().split('T')[0]); setShowModal(true) }} className="w-full py-1 border border-dashed text-xs" style={{ borderColor: '#ede9e2', color: '#c9b99a' }}>
-                    <Plus size={10} className="mx-auto" />
+                  <button
+                    onClick={() => { setSelectedDate(date.toISOString().split('T')[0]); setShowModal(true) }}
+                    style={{ width: '100%', padding: '0.25rem 0', fontSize: '0.7rem', border: '1px dashed #ebebeb', background: 'transparent', color: '#cccccc', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
+                    <Plus size={10} />
                   </button>
                 </div>
               )
@@ -160,39 +203,45 @@ export default function SlotsPage() {
           </div>
         </div>
 
-        <div className="flex gap-6 mt-4 text-xs" style={{ color: '#a09890' }}>
-          <span>空き</span>
-          <span style={{ color: '#c9b99a' }}>仮予約</span>
-          <span style={{ color: '#6b7c5c' }}>予約済</span>
+        <div className="flex gap-6 mt-4" style={{ fontSize: '0.7rem', color: '#cccccc', fontWeight: 300 }}>
+          <span>□ サロンの空き枠</span>
+          <span style={{ color: '#111111' }}>◎ 美容師と重複（予約可能枠が生成されています）</span>
         </div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(26,20,16,0.5)' }}>
-          <div className="w-full max-w-sm p-8 border" style={{ background: '#f7f4ef', borderColor: '#e2dcd4' }}>
-            <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#a09890' }}>ADD SLOT</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div style={{ width: '100%', maxWidth: '24rem', padding: '2rem', border: '1px solid #ebebeb', background: '#ffffff' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>ADD SLOT</p>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>DATE</label>
-                <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} required min={new Date().toISOString().split('T')[0]} className="w-full px-4 py-3 text-sm border focus:outline-none bg-transparent" style={selectStyle} />
+                <label style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>DATE</label>
+                <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} required min={new Date().toISOString().split('T')[0]}
+                  style={{ ...selectStyle, width: '100%', padding: '0.625rem 0', fontSize: '0.875rem', border: 'none', borderBottom: '1px solid #ebebeb', outline: 'none' }} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>START</label>
-                  <select value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-4 py-3 text-sm border focus:outline-none" style={selectStyle}>
+                  <label style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>START</label>
+                  <select value={startTime} onChange={e => setStartTime(e.target.value)}
+                    style={{ ...selectStyle, width: '100%', padding: '0.625rem 0', fontSize: '0.875rem', border: 'none', borderBottom: '1px solid #ebebeb', outline: 'none' }}>
                     {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>END</label>
-                  <select value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-4 py-3 text-sm border focus:outline-none" style={selectStyle}>
+                  <label style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>END</label>
+                  <select value={endTime} onChange={e => setEndTime(e.target.value)}
+                    style={{ ...selectStyle, width: '100%', padding: '0.625rem 0', fontSize: '0.875rem', border: 'none', borderBottom: '1px solid #ebebeb', outline: 'none' }}>
                     {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 text-xs border" style={{ borderColor: '#e2dcd4', color: '#a09890' }}>キャンセル</button>
-                <button type="submit" disabled={saving} className="flex-1 py-3 text-xs border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef] disabled:opacity-50 flex items-center justify-center gap-2" style={{ borderColor: '#1a1410', color: '#1a1410' }}>
+                <button type="button" onClick={() => setShowModal(false)}
+                  style={{ flex: 1, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #ebebeb', color: '#999999', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}>
+                  キャンセル
+                </button>
+                <button type="submit" disabled={saving}
+                  style={{ flex: 1, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#ffffff', background: '#111111', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 300, opacity: saving ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   {saving && <Loader2 size={12} className="animate-spin" />}
                   追加する
                 </button>
