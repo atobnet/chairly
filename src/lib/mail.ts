@@ -1,6 +1,9 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
+
 const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
 export async function sendBookingRequestMail({
@@ -20,7 +23,7 @@ export async function sendBookingRequestMail({
   menu: string
   salonName: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: toEmail,
     subject: `【Chairly】新しい予約リクエストが届きました`,
@@ -53,7 +56,7 @@ export async function sendBookingConfirmedMail({
   time: string
   salonName: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: toEmail,
     subject: `【Chairly】予約が確定しました`,
@@ -80,7 +83,7 @@ export async function sendBookingCancelledMail({
   date: string
   time: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: toEmail,
     subject: `【Chairly】予約がキャンセルされました`,
