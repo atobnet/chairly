@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { UserRole, Booking, Slot, Profile } from '@/types'
-import { Calendar, Clock, User, TrendingUp, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react'
+import type { UserRole, Slot, Profile, Booking } from '@/types'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface BookingWithDetails extends Booking {
-  slots: Slot & {
-    hairdressers?: { profiles: Profile } | null
-    salons?: { profiles: Profile } | null
-  }
+  slots: Slot & { hairdressers?: { profiles: Profile } | null }
   profiles: Profile
 }
 
@@ -26,168 +23,136 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, name')
-        .eq('id', user.id)
-        .single()
-
+      const { data: profile } = await supabase.from('profiles').select('role, name').eq('id', user.id).single()
       if (!profile) return
       setRole(profile.role as UserRole)
       setName(profile.name)
 
       if (profile.role === 'hairdresser') {
-        // Get upcoming bookings for hairdresser via their slots
-        const { data: slotData } = await supabase
-          .from('slots')
-          .select('id')
-          .eq('hairdresser_id', user.id)
-
+        const { data: slotData } = await supabase.from('slots').select('id').eq('hairdresser_id', user.id)
         const slotIds = (slotData || []).map((s: { id: string }) => s.id)
         if (slotIds.length > 0) {
-          const { data } = await supabase
-            .from('bookings')
-            .select(`*, slots(*, hairdressers(profiles(name))), profiles(name)`)
+          const { data } = await supabase.from('bookings')
+            .select('*, slots(*), profiles(name, id, role, avatar_url, created_at)')
             .in('slot_id', slotIds)
-            .gte('slots.date', new Date().toISOString().split('T')[0])
             .order('created_at', { ascending: false })
-            .limit(10)
+            .limit(8)
           setBookings((data || []) as BookingWithDetails[])
         }
       } else if (profile.role === 'salon') {
-        const { data: slotData } = await supabase
-          .from('slots')
-          .select('id')
-          .eq('salon_id', user.id)
-
+        const { data: slotData } = await supabase.from('slots').select('id').eq('salon_id', user.id)
         const slotIds = (slotData || []).map((s: { id: string }) => s.id)
         if (slotIds.length > 0) {
-          const { data } = await supabase
-            .from('bookings')
-            .select(`*, slots(*), profiles(name)`)
+          const { data } = await supabase.from('bookings')
+            .select('*, slots(*), profiles(name, id, role, avatar_url, created_at)')
             .in('slot_id', slotIds)
             .order('created_at', { ascending: false })
-            .limit(10)
+            .limit(8)
           setBookings((data || []) as BookingWithDetails[])
         }
       } else {
-        // consumer
-        const { data } = await supabase
-          .from('bookings')
-          .select(`*, slots(*, hairdressers(profiles(name))), profiles(name)`)
+        const { data } = await supabase.from('bookings')
+          .select('*, slots(*, hairdressers(profiles(name, id, role, avatar_url, created_at))), profiles(name, id, role, avatar_url, created_at)')
           .eq('consumer_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(8)
         setBookings((data || []) as BookingWithDetails[])
       }
-
       setLoading(false)
     }
-
     load()
   }, [])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F172A' }}>
-        <Loader2 className="animate-spin text-blue-400" size={32} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
+        <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
       </div>
     )
   }
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-      pending: { label: '確認待ち', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30', icon: <AlertCircle size={12} /> },
-      confirmed: { label: '確定', color: 'text-green-400 bg-green-400/10 border-green-400/30', icon: <CheckCircle size={12} /> },
-      cancelled: { label: 'キャンセル', color: 'text-red-400 bg-red-400/10 border-red-400/30', icon: <XCircle size={12} /> },
-    }
-    const s = map[status] || map.pending
-    return (
-      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${s.color}`}>
-        {s.icon}{s.label}
-      </span>
-    )
+  const statusLabel: Record<string, { label: string; color: string }> = {
+    pending: { label: '確認待ち', color: '#c9b99a' },
+    confirmed: { label: '確定', color: '#6b7c5c' },
+    cancelled: { label: 'キャンセル', color: '#85403b' },
   }
 
+  const quickLinks = role === 'consumer'
+    ? [{ href: '/search', label: '美容師を探す', sub: 'Find Artists' }, { href: '/bookings', label: '予約一覧', sub: 'My Bookings' }]
+    : role === 'hairdresser'
+    ? [{ href: '/schedule', label: 'スケジュール', sub: 'Schedule' }, { href: '/requests', label: 'リクエスト', sub: 'Requests' }, { href: '/profile/edit', label: 'プロフィール', sub: 'Profile' }]
+    : [{ href: '/slots', label: '空き枠管理', sub: 'Slots' }, { href: '/space/edit', label: 'スペース編集', sub: 'Space' }]
+
   return (
-    <div className="min-h-screen px-4 py-8" style={{ background: '#0F172A' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
-          <p className="text-slate-400 mt-1">こんにちは、{name} さん</p>
+
+        {/* Header */}
+        <div className="mb-16">
+          <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>DASHBOARD</p>
+          <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>
+            こんにちは、{name}
+          </h1>
         </div>
 
-        {/* Quick actions */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {role === 'consumer' && (
-            <>
-              <QuickCard href="/search" icon={<User size={18} className="text-blue-400" />} title="美容師を探す" desc="エリア・メニューで検索" />
-              <QuickCard href="/bookings" icon={<Calendar size={18} className="text-blue-400" />} title="予約一覧" desc="予約履歴を確認" />
-            </>
-          )}
-          {role === 'hairdresser' && (
-            <>
-              <QuickCard href="/schedule" icon={<Calendar size={18} className="text-blue-400" />} title="スケジュール" desc="空き枠を管理" />
-              <QuickCard href="/requests" icon={<AlertCircle size={18} className="text-blue-400" />} title="リクエスト" desc="予約申請を確認" />
-              <QuickCard href="/profile/edit" icon={<User size={18} className="text-blue-400" />} title="プロフィール" desc="情報を編集" />
-            </>
-          )}
-          {role === 'salon' && (
-            <>
-              <QuickCard href="/slots" icon={<Calendar size={18} className="text-blue-400" />} title="空き枠管理" desc="スロットを管理" />
-              <QuickCard href="/space/edit" icon={<TrendingUp size={18} className="text-blue-400" />} title="スペース編集" desc="スペース情報を更新" />
-            </>
-          )}
+        {/* Quick links */}
+        <div className="grid sm:grid-cols-3 gap-0 border mb-16" style={{ borderColor: '#e2dcd4' }}>
+          {quickLinks.map((l, i) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="p-8 transition-colors group"
+              style={{
+                borderRight: i < quickLinks.length - 1 ? '1px solid #e2dcd4' : 'none',
+                background: 'transparent',
+              }}
+            >
+              <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>{l.sub.toUpperCase()}</p>
+              <p className="text-base" style={{ color: '#1a1410' }}>{l.label}</p>
+              <p className="text-xs mt-3 transition-opacity opacity-0 group-hover:opacity-100" style={{ color: '#6b7c5c' }}>→</p>
+            </Link>
+          ))}
         </div>
 
         {/* Bookings */}
-        <div className="rounded-2xl border border-slate-700 overflow-hidden" style={{ background: '#1E293B' }}>
-          <div className="px-5 py-4 border-b border-slate-700">
-            <h2 className="font-semibold text-white">
-              {role === 'hairdresser' ? '最近の予約リクエスト' : role === 'salon' ? '最近の利用予約' : '最近の予約'}
-            </h2>
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-serif text-xl" style={{ fontWeight: 300 }}>最近の予約</h2>
           </div>
+
           {bookings.length === 0 ? (
-            <div className="px-5 py-12 text-center text-slate-500">
-              <Clock size={32} className="mx-auto mb-3 opacity-40" />
-              <p>まだ予約はありません</p>
+            <div className="py-20 text-center border" style={{ borderColor: '#e2dcd4' }}>
+              <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>NO BOOKINGS YET</p>
+              {role === 'consumer' && (
+                <Link href="/search" className="inline-block mt-4 text-xs underline underline-offset-4" style={{ color: '#6b7c5c' }}>
+                  美容師を探す →
+                </Link>
+              )}
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
-              {bookings.map((b) => (
-                <div key={b.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-white font-medium">
-                      {b.menu || '未指定'}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {b.slots?.date} {b.slots?.start_time?.slice(0, 5)}〜{b.slots?.end_time?.slice(0, 5)}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {role === 'hairdresser' ? `顧客: ${b.profiles?.name}` : ''}
-                    </p>
+            <div className="border" style={{ borderColor: '#e2dcd4' }}>
+              {bookings.map((b, i) => {
+                const s = statusLabel[b.status] || statusLabel.pending
+                return (
+                  <div
+                    key={b.id}
+                    className="px-6 py-5 flex items-center justify-between gap-4"
+                    style={{ borderBottom: i < bookings.length - 1 ? '1px solid #ede9e2' : 'none' }}
+                  >
+                    <div>
+                      <p className="text-sm" style={{ color: '#1a1410' }}>{b.menu || '未指定'}</p>
+                      <p className="text-xs mt-1" style={{ color: '#a09890' }}>
+                        {b.slots?.date} {b.slots?.start_time?.slice(0, 5)}–{b.slots?.end_time?.slice(0, 5)}
+                      </p>
+                    </div>
+                    <span className="text-xs tracking-widest" style={{ color: s.color }}>{s.label}</span>
                   </div>
-                  {statusBadge(b.status)}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
     </div>
-  )
-}
-
-function QuickCard({ href, icon, title, desc }: { href: string; icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <Link href={href} className="rounded-xl border border-slate-700 p-4 flex items-center gap-3 hover:border-blue-500/50 transition-all group" style={{ background: '#0F172A' }}>
-      <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-        {icon}
-      </div>
-      <div>
-        <p className="text-white text-sm font-medium">{title}</p>
-        <p className="text-slate-500 text-xs">{desc}</p>
-      </div>
-    </Link>
   )
 }

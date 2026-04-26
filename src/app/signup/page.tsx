@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Scissors, Mail, Lock, User, Building2, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { UserRole } from '@/types'
 
 function SignupForm() {
@@ -32,17 +32,7 @@ function SignupForm() {
       return
     }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      role,
-      name,
-    })
-
-    if (profileError) {
-      setError('プロフィールの作成に失敗しました: ' + profileError.message)
-      setLoading(false)
-      return
-    }
+    await supabase.from('profiles').insert({ id: data.user.id, role, name })
 
     if (role === 'hairdresser') {
       await supabase.from('hairdressers').insert({ id: data.user.id, area: '東京' })
@@ -54,129 +44,134 @@ function SignupForm() {
     router.refresh()
   }
 
-  const roles: { value: UserRole; label: string; icon: React.ReactNode; description: string }[] = [
-    { value: 'consumer', label: '消費者', icon: <User size={18} />, description: '美容師を探して予約' },
-    { value: 'hairdresser', label: '美容師', icon: <Scissors size={18} />, description: 'フリーランスで活動' },
-    { value: 'salon', label: 'サロン', icon: <Building2 size={18} />, description: 'スペースを提供' },
+  const roles: { value: UserRole; label: string; sub: string }[] = [
+    { value: 'consumer', label: '消費者', sub: 'Consumer' },
+    { value: 'hairdresser', label: '美容師', sub: 'Hairdresser' },
+    { value: 'salon', label: 'サロン', sub: 'Salon' },
   ]
 
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: '#0F172A' }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-              <Scissors size={20} className="text-white" />
-            </div>
-            <span className="font-bold text-2xl text-white">Chairly</span>
-          </Link>
-          <h1 className="mt-6 text-xl font-bold text-white">アカウント作成</h1>
-          <p className="text-slate-400 text-sm mt-1">無料で始められます</p>
-        </div>
+  const inputStyle = {
+    background: 'transparent',
+    borderColor: '#e2dcd4',
+    color: '#1a1410',
+  }
 
-        <div className="rounded-2xl border border-slate-700 p-6" style={{ background: '#1E293B' }}>
-          <form onSubmit={handleSignup} className="space-y-4">
-            {/* Role selection */}
+  return (
+    <div className="min-h-screen flex" style={{ background: '#f7f4ef' }}>
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16" style={{ background: '#1a1410' }}>
+        <Link href="/" className="font-serif text-xl tracking-[0.2em]" style={{ color: '#f7f4ef' }}>CHAIRLY</Link>
+        <div>
+          <h2 className="font-serif text-5xl leading-tight mb-6" style={{ fontWeight: 300, color: '#f7f4ef' }}>
+            あなたの<br />
+            <em style={{ color: '#6b7c5c', fontStyle: 'italic' }}>物語</em>を<br />
+            始めよう。
+          </h2>
+        </div>
+        <p className="text-xs tracking-widest" style={{ color: '#3a3028' }}>© 2025 CHAIRLY</p>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col justify-center px-8 py-16">
+        <div className="max-w-sm w-full mx-auto">
+          <Link href="/" className="lg:hidden font-serif text-xl tracking-[0.2em] block mb-12" style={{ color: '#1a1410' }}>CHAIRLY</Link>
+
+          <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#a09890' }}>CREATE ACCOUNT</p>
+          <h1 className="font-serif text-3xl mb-10" style={{ fontWeight: 300 }}>アカウント作成</h1>
+
+          <form onSubmit={handleSignup} className="space-y-5">
+            {/* Role */}
             <div>
-              <label className="block text-sm text-slate-300 mb-2">利用タイプ</label>
+              <label className="block text-xs tracking-widest mb-3" style={{ color: '#6b6459' }}>ROLE</label>
               <div className="grid grid-cols-3 gap-2">
                 {roles.map((r) => (
                   <button
                     key={r.value}
                     type="button"
                     onClick={() => setRole(r.value)}
-                    className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border text-xs transition-all ${
-                      role === r.value
-                        ? 'border-blue-500 bg-blue-500/15 text-blue-300'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-500'
-                    }`}
+                    className="py-3 px-2 text-center border transition-all"
+                    style={{
+                      borderColor: role === r.value ? '#1a1410' : '#e2dcd4',
+                      background: role === r.value ? '#1a1410' : 'transparent',
+                      color: role === r.value ? '#f7f4ef' : '#6b6459',
+                    }}
                   >
-                    {r.icon}
-                    <span className="font-medium">{r.label}</span>
+                    <div className="text-xs font-medium">{r.label}</div>
+                    <div className="text-xs mt-0.5" style={{ color: role === r.value ? '#6b7c5c' : '#c9b99a', fontSize: '10px' }}>{r.sub}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 mb-1.5">名前</label>
+              <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>NAME</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 placeholder="山田 花子"
-                className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-                style={{ background: '#0F172A' }}
+                className="w-full px-4 py-3 text-sm border focus:outline-none transition-colors"
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = '#6b7c5c'}
+                onBlur={e => e.target.style.borderColor = '#e2dcd4'}
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 mb-1.5">メールアドレス</label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="hello@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-                  style={{ background: '#0F172A' }}
-                />
-              </div>
+              <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>EMAIL</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="hello@example.com"
+                className="w-full px-4 py-3 text-sm border focus:outline-none transition-colors"
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = '#6b7c5c'}
+                onBlur={e => e.target.style.borderColor = '#e2dcd4'}
+              />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 mb-1.5">パスワード</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="6文字以上"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-                  style={{ background: '#0F172A' }}
-                />
-              </div>
+              <label className="block text-xs tracking-widest mb-2" style={{ color: '#6b6459' }}>PASSWORD</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder="6文字以上"
+                className="w-full px-4 py-3 text-sm border focus:outline-none transition-colors"
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = '#6b7c5c'}
+                onBlur={e => e.target.style.borderColor = '#e2dcd4'}
+              />
             </div>
 
-            {error && (
-              <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
+            {error && <p className="text-xs" style={{ color: '#85403b' }}>{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #3B82F6, #60A5FA)' }}
+              className="w-full py-3.5 text-xs tracking-[0.2em] border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef] disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ borderColor: '#1a1410', color: '#1a1410' }}
             >
-              {loading && <Loader2 size={15} className="animate-spin" />}
+              {loading && <Loader2 size={12} className="animate-spin" />}
               アカウントを作成
             </button>
           </form>
-        </div>
 
-        <p className="text-center text-sm text-slate-400 mt-4">
-          すでにアカウントをお持ちの方は{' '}
-          <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium">
-            ログイン
-          </Link>
-        </p>
+          <p className="text-xs mt-8" style={{ color: '#a09890' }}>
+            すでにアカウントをお持ちの方は{' '}
+            <Link href="/login" className="underline underline-offset-4 hover:opacity-60" style={{ color: '#6b6459' }}>ログイン</Link>
+          </p>
+        </div>
       </div>
     </div>
   )
 }
 
 export default function SignupPage() {
-  return (
-    <Suspense>
-      <SignupForm />
-    </Suspense>
-  )
+  return <Suspense><SignupForm /></Suspense>
 }

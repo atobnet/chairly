@@ -5,136 +5,137 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 import type { UserRole } from '@/types'
-import { Scissors, Menu, X, LogOut } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const [role, setRole] = useState<UserRole | null>(null)
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      const { data } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
       if (data) setRole(data.role as UserRole)
     })
   }, [])
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+    setRole(null)
     router.push('/')
     router.refresh()
   }
 
-  const links = role === 'consumer'
-    ? [
-        { href: '/search', label: '美容師を探す' },
-        { href: '/bookings', label: '予約一覧' },
-      ]
-    : role === 'hairdresser'
-    ? [
-        { href: '/dashboard', label: 'ダッシュボード' },
-        { href: '/schedule', label: 'スケジュール' },
-        { href: '/requests', label: 'リクエスト' },
-        { href: '/profile/edit', label: 'プロフィール' },
-      ]
-    : role === 'salon'
-    ? [
-        { href: '/dashboard', label: 'ダッシュボード' },
-        { href: '/slots', label: '空き枠管理' },
-        { href: '/space/edit', label: 'スペース編集' },
-      ]
-    : []
-
   const isAuthPage = pathname === '/login' || pathname === '/signup'
   if (isAuthPage) return null
 
+  const links = role === 'consumer'
+    ? [{ href: '/search', label: '美容師を探す' }, { href: '/bookings', label: '予約' }]
+    : role === 'hairdresser'
+    ? [{ href: '/dashboard', label: 'ダッシュボード' }, { href: '/schedule', label: 'スケジュール' }, { href: '/requests', label: 'リクエスト' }, { href: '/profile/edit', label: 'プロフィール' }]
+    : role === 'salon'
+    ? [{ href: '/dashboard', label: 'ダッシュボード' }, { href: '/slots', label: '空き枠' }, { href: '/space/edit', label: 'スペース' }]
+    : []
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-700/50 backdrop-blur-md" style={{ background: 'rgba(15,23,42,0.92)' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center group-hover:bg-blue-400 transition-colors">
-            <Scissors size={16} className="text-white" />
-          </div>
-          <span className="font-bold text-xl tracking-tight text-white">Chairly</span>
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      style={{
+        background: scrolled ? 'rgba(247,244,239,0.92)' : 'rgba(247,244,239,0.7)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: scrolled ? '1px solid #e2dcd4' : '1px solid transparent',
+      }}
+    >
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Logo */}
+        <Link href="/" className="group flex items-center gap-3">
+          <span
+            className="font-serif text-xl tracking-widest"
+            style={{ color: '#1a1410', letterSpacing: '0.2em' }}
+          >
+            CHAIRLY
+          </span>
         </Link>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Desktop */}
+        <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={`text-sm transition-colors ${
-                pathname.startsWith(l.href)
-                  ? 'text-blue-400 font-medium'
-                  : 'text-slate-300 hover:text-white'
-              }`}
+              className="text-xs tracking-widest transition-colors"
+              style={{
+                color: pathname.startsWith(l.href) ? '#6b7c5c' : '#6b6459',
+                fontWeight: pathname.startsWith(l.href) ? 500 : 300,
+              }}
             >
-              {l.label}
+              {l.label.toUpperCase()}
             </Link>
           ))}
           {role ? (
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              className="text-xs tracking-widest transition-colors"
+              style={{ color: '#a09890', fontWeight: 300 }}
             >
-              <LogOut size={14} />
-              ログアウト
+              SIGN OUT
             </button>
           ) : (
-            <>
-              <Link href="/login" className="text-sm text-slate-300 hover:text-white transition-colors">
-                ログイン
+            <div className="flex items-center gap-6">
+              <Link href="/login" className="text-xs tracking-widest" style={{ color: '#6b6459', fontWeight: 300 }}>
+                LOGIN
               </Link>
               <Link
                 href="/signup"
-                className="text-sm bg-blue-500 hover:bg-blue-400 text-white px-4 py-1.5 rounded-full transition-colors font-medium"
+                className="text-xs tracking-widest px-5 py-2 border transition-all"
+                style={{ color: '#1a1410', borderColor: '#1a1410', fontWeight: 400, letterSpacing: '0.15em' }}
               >
-                無料登録
+                JOIN
               </Link>
-            </>
+            </div>
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden text-slate-300"
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={22} /> : <Menu size={22} />}
+        {/* Mobile */}
+        <button className="md:hidden" onClick={() => setOpen(!open)} style={{ color: '#1a1410' }}>
+          {open ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-slate-700/50 px-4 py-3 flex flex-col gap-3" style={{ background: 'rgba(15,23,42,0.97)' }}>
+        <div
+          className="md:hidden px-6 py-6 flex flex-col gap-4 border-t"
+          style={{ background: 'rgba(247,244,239,0.97)', borderColor: '#e2dcd4' }}
+        >
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
-              className={`text-sm py-1 ${
-                pathname.startsWith(l.href) ? 'text-blue-400' : 'text-slate-300'
-              }`}
+              className="text-xs tracking-widest py-1"
+              style={{ color: pathname.startsWith(l.href) ? '#6b7c5c' : '#6b6459' }}
             >
-              {l.label}
+              {l.label.toUpperCase()}
             </Link>
           ))}
           {role ? (
-            <button onClick={handleSignOut} className="text-sm text-slate-400 text-left py-1">
-              ログアウト
+            <button onClick={handleSignOut} className="text-xs tracking-widest text-left py-1" style={{ color: '#a09890' }}>
+              SIGN OUT
             </button>
           ) : (
             <>
-              <Link href="/login" onClick={() => setOpen(false)} className="text-sm text-slate-300 py-1">ログイン</Link>
-              <Link href="/signup" onClick={() => setOpen(false)} className="text-sm text-blue-400 py-1">無料登録</Link>
+              <Link href="/login" onClick={() => setOpen(false)} className="text-xs tracking-widest py-1" style={{ color: '#6b6459' }}>LOGIN</Link>
+              <Link href="/signup" onClick={() => setOpen(false)} className="text-xs tracking-widest py-1" style={{ color: '#1a1410' }}>JOIN FREE</Link>
             </>
           )}
         </div>

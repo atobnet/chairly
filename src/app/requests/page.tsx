@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, CheckCircle, XCircle, AlertCircle, Calendar, User } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { Slot, Profile } from '@/types'
 
 interface BookingRequest {
@@ -20,29 +20,21 @@ interface BookingRequest {
 export default function RequestsPage() {
   const [requests, setRequests] = useState<BookingRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      setUserId(user.id)
 
-      const { data: slots } = await supabase
-        .from('slots')
-        .select('id')
-        .eq('hairdresser_id', user.id)
-
+      const { data: slots } = await supabase.from('slots').select('id').eq('hairdresser_id', user.id)
       const slotIds = (slots || []).map((s: { id: string }) => s.id)
 
       if (slotIds.length > 0) {
-        const { data } = await supabase
-          .from('bookings')
-          .select(`*, slots(*), profiles(id, name, avatar_url, role, created_at)`)
+        const { data } = await supabase.from('bookings')
+          .select('*, slots(*), profiles(id, name, avatar_url, role, created_at)')
           .in('slot_id', slotIds)
           .order('created_at', { ascending: false })
-
         setRequests((data || []) as BookingRequest[])
       }
       setLoading(false)
@@ -51,97 +43,70 @@ export default function RequestsPage() {
   }, [])
 
   const handleConfirm = async (bookingId: string, slotId: string) => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: 'confirmed' })
-      .eq('id', bookingId)
-
-    if (!error) {
-      await supabase.from('slots').update({ status: 'booked' }).eq('id', slotId)
-      setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'confirmed' } : r))
-    }
+    await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId)
+    await supabase.from('slots').update({ status: 'booked' }).eq('id', slotId)
+    setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'confirmed' } : r))
   }
 
   const handleCancel = async (bookingId: string, slotId: string) => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: 'cancelled' })
-      .eq('id', bookingId)
-
-    if (!error) {
-      await supabase.from('slots').update({ status: 'available' }).eq('id', slotId)
-      setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'cancelled' } : r))
-    }
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId)
+    await supabase.from('slots').update({ status: 'available' }).eq('id', slotId)
+    setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'cancelled' } : r))
   }
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-      pending: { label: '確認待ち', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30', icon: <AlertCircle size={12} /> },
-      confirmed: { label: '確定', color: 'text-green-400 bg-green-400/10 border-green-400/30', icon: <CheckCircle size={12} /> },
-      cancelled: { label: 'キャンセル', color: 'text-red-400 bg-red-400/10 border-red-400/30', icon: <XCircle size={12} /> },
-    }
-    const s = map[status] || map.pending
-    return (
-      <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${s.color}`}>
-        {s.icon}{s.label}
-      </span>
-    )
-  }
+  const statusColor: Record<string, string> = { pending: '#c9b99a', confirmed: '#6b7c5c', cancelled: '#85403b' }
+  const statusLabel: Record<string, string> = { pending: '確認待ち', confirmed: '確定', cancelled: 'キャンセル' }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F172A' }}>
-        <Loader2 className="animate-spin text-blue-400" size={32} />
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f4ef' }}>
+      <Loader2 className="animate-spin" size={24} style={{ color: '#6b7c5c' }} />
+    </div>
+  )
 
   return (
-    <div className="min-h-screen px-4 py-8" style={{ background: '#0F172A' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-2">予約リクエスト管理</h1>
-        <p className="text-slate-400 mb-6">消費者からのリクエストを確認・管理できます</p>
+        <div className="mb-16">
+          <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>REQUESTS</p>
+          <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>予約リクエスト</h1>
+        </div>
 
         {requests.length === 0 ? (
-          <div className="text-center py-20" style={{ background: '#1E293B', borderRadius: '1rem' }}>
-            <AlertCircle size={40} className="mx-auto mb-3 text-slate-600" />
-            <p className="text-slate-400">まだリクエストはありません</p>
+          <div className="py-20 text-center border" style={{ borderColor: '#e2dcd4' }}>
+            <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>NO REQUESTS YET</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {requests.map(req => (
-              <div key={req.id} className="rounded-2xl border border-slate-700 p-5" style={{ background: '#1E293B' }}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-300">
-                      {req.profiles?.name?.[0] || '?'}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium text-sm">{req.profiles?.name || '不明'}</p>
-                      <p className="text-slate-500 text-xs">
-                        {new Date(req.created_at).toLocaleDateString('ja-JP')} リクエスト
-                      </p>
-                    </div>
+            {requests.map((req) => (
+              <div key={req.id} className="border p-6" style={{ borderColor: '#e2dcd4' }}>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: '#1a1410' }}>{req.profiles?.name || '不明'}</p>
+                    <p className="text-xs mt-1" style={{ color: '#a09890' }}>
+                      {new Date(req.created_at).toLocaleDateString('ja-JP')} リクエスト
+                    </p>
                   </div>
-                  {statusBadge(req.status)}
+                  <span className="text-xs tracking-widest" style={{ color: statusColor[req.status] }}>
+                    {statusLabel[req.status]}
+                  </span>
                 </div>
 
-                <div className="rounded-lg bg-slate-700/30 px-4 py-3 mb-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-2 gap-4 mb-4 py-4 border-y" style={{ borderColor: '#ede9e2' }}>
                   <div>
-                    <p className="text-slate-500 text-xs mb-0.5">日時</p>
-                    <p className="text-white">
-                      {req.slots?.date} {req.slots?.start_time?.slice(0, 5)}〜{req.slots?.end_time?.slice(0, 5)}
+                    <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>DATE & TIME</p>
+                    <p className="text-sm" style={{ color: '#1a1410' }}>
+                      {req.slots?.date}　{req.slots?.start_time?.slice(0, 5)}–{req.slots?.end_time?.slice(0, 5)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs mb-0.5">メニュー</p>
-                    <p className="text-white">{req.menu || '未指定'}</p>
+                    <p className="text-xs tracking-widest mb-1" style={{ color: '#a09890' }}>MENU</p>
+                    <p className="text-sm" style={{ color: '#1a1410' }}>{req.menu || '未指定'}</p>
                   </div>
                 </div>
 
                 {req.message && (
-                  <p className="text-slate-400 text-sm mb-3 bg-slate-700/20 rounded-lg px-3 py-2">
-                    「{req.message}」
+                  <p className="text-xs leading-relaxed mb-4 italic" style={{ color: '#6b6459' }}>
+                    "{req.message}"
                   </p>
                 )}
 
@@ -149,17 +114,16 @@ export default function RequestsPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleCancel(req.id, req.slot_id)}
-                      className="flex-1 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 text-xs tracking-widest border transition-all hover:opacity-70"
+                      style={{ borderColor: '#e2dcd4', color: '#85403b' }}
                     >
-                      <XCircle size={14} />
                       キャンセル
                     </button>
                     <button
                       onClick={() => handleConfirm(req.id, req.slot_id)}
-                      className="flex-1 py-2 rounded-lg text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:opacity-90"
-                      style={{ background: 'linear-gradient(135deg, #3B82F6, #60A5FA)' }}
+                      className="flex-1 py-2.5 text-xs tracking-widest border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]"
+                      style={{ borderColor: '#1a1410', color: '#1a1410' }}
                     >
-                      <CheckCircle size={14} />
                       確認する
                     </button>
                   </div>

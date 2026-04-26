@@ -1,192 +1,270 @@
 import Link from 'next/link'
-import { Scissors, Building2, User, ChevronRight, Star, MapPin, Clock } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen" style={{ background: '#0F172A' }}>
+    <div style={{ background: '#f7f4ef', color: '#1a1410' }}>
+
       {/* Hero */}
-      <section className="relative overflow-hidden px-4 pt-20 pb-32 sm:pt-32">
-        {/* Background glow */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #3B82F6, transparent)' }} />
+      <section className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden">
+        {/* Decorative lines */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          <div className="absolute top-0 left-1/3 w-px h-full" style={{ background: 'linear-gradient(to bottom, transparent, #e2dcd4 30%, #e2dcd4 70%, transparent)' }} />
+          <div className="absolute top-0 right-1/3 w-px h-full" style={{ background: 'linear-gradient(to bottom, transparent, #e2dcd4 30%, #e2dcd4 70%, transparent)' }} />
         </div>
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-medium mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            東京エリア・プロトタイプ公開中
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-bold text-white leading-tight tracking-tight mb-6">
-            あなたの才能を、<br />
-            <span style={{ color: '#60A5FA' }}>自由な場所で</span>輝かせよう
-          </h1>
-
-          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            フリーランス美容師 × レンタルサロン × 消費者。<br />
-            Chairly がすべてをつなぐ、新しい美容体験。
+        <div className="relative text-center max-w-3xl mx-auto">
+          <p className="text-xs tracking-[0.3em] mb-10" style={{ color: '#a09890' }}>
+            TOKYO — EST. 2025
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <h1
+            className="font-serif leading-tight mb-8"
+            style={{ fontSize: 'clamp(3rem, 8vw, 6rem)', fontWeight: 300, letterSpacing: '0.05em', color: '#1a1410' }}
+          >
+            あなただけの<br />
+            <em style={{ fontStyle: 'italic', color: '#6b7c5c' }}>美容師</em>と、<br />
+            空間を。
+          </h1>
+
+          <div className="divider mb-8" />
+
+          <p
+            className="text-sm leading-loose max-w-md mx-auto mb-12"
+            style={{ color: '#6b6459', letterSpacing: '0.08em', fontWeight: 300 }}
+          >
+            フリーランス美容師・レンタルサロン・消費者。<br />
+            三者が出会う、新しい美容の場所。
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold text-base transition-all hover:opacity-90 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #3B82F6, #60A5FA)' }}
+              className="inline-flex items-center gap-2 px-8 py-3 text-xs tracking-[0.2em] border transition-all hover:bg-[#1a1410] hover:text-[#f7f4ef]"
+              style={{ borderColor: '#1a1410', color: '#1a1410' }}
             >
               美容師を探す
-              <ChevronRight size={18} />
+              <ChevronRight size={12} />
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-slate-200 font-semibold text-base border border-slate-600 hover:border-slate-400 hover:text-white transition-all"
+              className="inline-flex items-center gap-2 px-8 py-3 text-xs tracking-[0.2em] transition-all hover:opacity-70"
+              style={{ color: '#6b6459' }}
             >
-              無料で始める
+              無料で始める →
             </Link>
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <span className="text-xs tracking-[0.3em]" style={{ color: '#a09890' }}>SCROLL</span>
+          <div className="w-px h-10 animate-pulse" style={{ background: 'linear-gradient(to bottom, #a09890, transparent)' }} />
+        </div>
+      </section>
+
+      {/* Concept */}
+      <section className="py-32 px-6">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-20 items-center">
+          <div>
+            <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#a09890' }}>CONCEPT</p>
+            <h2 className="font-serif text-4xl leading-relaxed mb-8" style={{ fontWeight: 300 }}>
+              才能を、<br />
+              <em style={{ fontStyle: 'italic', color: '#6b7c5c' }}>自由な場所</em>で。
+            </h2>
+            <div className="w-10 h-px mb-8" style={{ background: '#e2dcd4' }} />
+            <p className="text-sm leading-loose" style={{ color: '#6b6459', fontWeight: 300 }}>
+              サロン契約に縛られず、自分のペースで働きたい美容師。
+              遊休チェアを活かしたいサロンオーナー。
+              お気に入りの美容師に施術してもらいたい消費者。
+              Chairly は、その三者をつなぐ場所です。
+            </p>
+          </div>
+          <div
+            className="aspect-square rounded-none flex items-center justify-center"
+            style={{ background: '#f0ece4', border: '1px solid #e2dcd4' }}
+          >
+            <div className="text-center p-12">
+              <div className="font-serif text-8xl mb-4" style={{ color: '#e2dcd4', fontWeight: 300 }}>✂</div>
+              <p className="text-xs tracking-[0.3em]" style={{ color: '#c9b99a' }}>HAIRDRESSER × SALON × YOU</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 3 User Types */}
-      <section className="px-4 pb-24">
+      {/* 3 Roles */}
+      <section className="py-24 px-6" style={{ background: '#faf9f7', borderTop: '1px solid #e2dcd4', borderBottom: '1px solid #e2dcd4' }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-center text-2xl sm:text-3xl font-bold text-white mb-4">
-            3者をつなぐプラットフォーム
-          </h2>
-          <p className="text-center text-slate-400 mb-12">誰でも使える、シンプルな仕組み</p>
+          <div className="text-center mb-20">
+            <p className="text-xs tracking-[0.3em] mb-4" style={{ color: '#a09890' }}>FOR EVERYONE</p>
+            <h2 className="font-serif text-3xl" style={{ fontWeight: 300 }}>三者をつなぐプラットフォーム</h2>
+          </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-0 border" style={{ borderColor: '#e2dcd4' }}>
             {/* Consumer */}
-            <div className="rounded-2xl border border-slate-700/50 p-6 group hover:border-blue-500/50 transition-all hover:bg-slate-800/30" style={{ background: '#1E293B' }}>
-              <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center mb-4 group-hover:bg-blue-500/25 transition-colors">
-                <User size={22} className="text-blue-400" />
-              </div>
-              <h3 className="text-white font-bold text-lg mb-2">消費者</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                お気に入りの美容師を見つけて、好きな場所・時間で施術を予約。
-              </p>
-              <ul className="space-y-2 text-sm text-slate-300">
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> エリア・メニューで検索</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> リアルタイム空き枠確認</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> 簡単予約リクエスト</li>
-              </ul>
-              <Link href="/signup?role=consumer" className="mt-6 flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium">
-                消費者として登録 <ChevronRight size={14} />
-              </Link>
-            </div>
-
+            <RoleCard
+              number="01"
+              title="消費者"
+              subtitle="Consumer"
+              description="お気に入りの美容師を見つけて、好きな場所・時間で施術を予約。"
+              features={['エリア・メニューで検索', 'リアルタイム空き枠確認', '簡単予約リクエスト']}
+              href="/signup?role=consumer"
+              bordered
+            />
             {/* Hairdresser */}
-            <div className="rounded-2xl border border-blue-500/40 p-6 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f, #1E293B)' }}>
-              <div className="absolute top-4 right-4 text-xs bg-blue-500 text-white px-2.5 py-0.5 rounded-full font-medium">人気</div>
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4">
-                <Scissors size={22} className="text-blue-400" />
-              </div>
-              <h3 className="text-white font-bold text-lg mb-2">フリーランス美容師</h3>
-              <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                サロン契約不要。好きな場所で、自分のペースで働こう。
-              </p>
-              <ul className="space-y-2 text-sm text-slate-200">
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> プロフィール・料金を自由設定</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> スケジュール管理</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> 予約リクエスト管理</li>
-              </ul>
-              <Link href="/signup?role=hairdresser" className="mt-6 flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium">
-                美容師として登録 <ChevronRight size={14} />
-              </Link>
-            </div>
-
+            <RoleCard
+              number="02"
+              title="美容師"
+              subtitle="Hairdresser"
+              description="サロン契約不要。好きな場所で、自分のペースで働こう。"
+              features={['プロフィール・料金を自由設定', 'スケジュール管理', '予約リクエスト管理']}
+              href="/signup?role=hairdresser"
+              highlighted
+              bordered
+            />
             {/* Salon */}
-            <div className="rounded-2xl border border-slate-700/50 p-6 group hover:border-blue-500/50 transition-all hover:bg-slate-800/30" style={{ background: '#1E293B' }}>
-              <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center mb-4 group-hover:bg-blue-500/25 transition-colors">
-                <Building2 size={22} className="text-blue-400" />
-              </div>
-              <h3 className="text-white font-bold text-lg mb-2">レンタルサロン</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                遊休チェアを収益化。美容師に空き枠を提供して稼働率アップ。
-              </p>
-              <ul className="space-y-2 text-sm text-slate-300">
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> スペース情報を掲載</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> 空き枠を一括管理</li>
-                <li className="flex items-center gap-2"><span className="text-blue-400">✓</span> 稼働率サマリー確認</li>
-              </ul>
-              <Link href="/signup?role=salon" className="mt-6 flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium">
-                サロンとして登録 <ChevronRight size={14} />
-              </Link>
-            </div>
+            <RoleCard
+              number="03"
+              title="サロン"
+              subtitle="Salon"
+              description="遊休チェアを収益化。美容師に空き枠を提供して稼働率アップ。"
+              features={['スペース情報を掲載', '空き枠を一括管理', '稼働率サマリー確認']}
+              href="/signup?role=salon"
+            />
           </div>
         </div>
       </section>
 
-      {/* Featured hairdressers (static promo) */}
-      <section className="px-4 pb-24">
+      {/* Featured hairdressers */}
+      <section className="py-32 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">注目の美容師</h2>
-            <Link href="/search" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
-              すべて見る <ChevronRight size={14} />
+          <div className="flex items-end justify-between mb-16">
+            <div>
+              <p className="text-xs tracking-[0.3em] mb-4" style={{ color: '#a09890' }}>FEATURED</p>
+              <h2 className="font-serif text-3xl" style={{ fontWeight: 300 }}>注目の美容師</h2>
+            </div>
+            <Link href="/search" className="text-xs tracking-widest transition-opacity hover:opacity-50" style={{ color: '#6b6459' }}>
+              ALL ARTISTS →
             </Link>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-3 gap-8">
             {SAMPLE_HAIRDRESSERS.map((h) => (
-              <div key={h.id} className="rounded-2xl border border-slate-700/50 overflow-hidden group cursor-pointer hover:border-slate-600 transition-all" style={{ background: '#1E293B' }}>
-                <div className="h-40 flex items-center justify-center relative overflow-hidden" style={{ background: h.gradient }}>
-                  <div className="text-5xl">{h.emoji}</div>
+              <Link key={h.id} href="/search" className="group block">
+                <div
+                  className="aspect-[3/4] mb-4 overflow-hidden flex items-center justify-center"
+                  style={{ background: h.bg }}
+                >
+                  <span className="text-6xl opacity-30 group-hover:scale-110 transition-transform duration-500">{h.emoji}</span>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-1">
-                    <h3 className="font-semibold text-white">{h.name}</h3>
-                    <div className="flex items-center gap-0.5 text-yellow-400 text-xs">
-                      <Star size={11} fill="currentColor" />
-                      <span className="text-slate-300">{h.rating}</span>
-                    </div>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium mb-0.5" style={{ color: '#1a1410' }}>{h.name}</p>
+                    <p className="text-xs" style={{ color: '#a09890' }}>{h.area} — {h.specialty}</p>
                   </div>
-                  <p className="text-slate-400 text-xs mb-2">{h.specialty}</p>
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
-                    <span className="flex items-center gap-1"><MapPin size={10} />{h.area}</span>
-                    <span className="flex items-center gap-1"><Clock size={10} />¥{h.price.toLocaleString()}〜</span>
-                  </div>
+                  <p className="text-xs" style={{ color: '#6b7c5c' }}>¥{h.price.toLocaleString()}〜</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="px-4 pb-24">
-        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-blue-500/30 p-12" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(96,165,250,0.05))' }}>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+      <section className="py-32 px-6" style={{ background: '#1a1410' }}>
+        <div className="max-w-lg mx-auto text-center">
+          <p className="text-xs tracking-[0.3em] mb-8" style={{ color: '#6b7c5c' }}>JOIN CHAIRLY</p>
+          <h2
+            className="font-serif mb-8 leading-relaxed"
+            style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 300, color: '#f7f4ef' }}
+          >
             今すぐ始めよう
           </h2>
-          <p className="text-slate-400 mb-8">登録は無料。東京エリアで先行公開中。</p>
+          <p className="text-xs leading-loose mb-12" style={{ color: '#6b6459', letterSpacing: '0.08em' }}>
+            登録は無料。東京エリア先行公開中。
+          </p>
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-10 py-3.5 rounded-full text-white font-semibold transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #3B82F6, #60A5FA)' }}
+            className="inline-flex items-center gap-3 px-10 py-3.5 text-xs tracking-[0.2em] border transition-all hover:bg-[#f7f4ef] hover:text-[#1a1410]"
+            style={{ borderColor: '#f7f4ef', color: '#f7f4ef' }}
           >
-            無料で登録する <ChevronRight size={18} />
+            無料登録
+            <ChevronRight size={12} />
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 px-4 py-8">
+      <footer className="px-6 py-12 border-t" style={{ borderColor: '#e2dcd4' }}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-blue-500 flex items-center justify-center">
-              <Scissors size={12} className="text-white" />
-            </div>
-            <span className="font-bold text-white">Chairly</span>
-          </div>
-          <p className="text-slate-500 text-sm">© 2025 Chairly. All rights reserved.</p>
+          <span className="font-serif text-lg tracking-[0.2em]" style={{ color: '#1a1410' }}>CHAIRLY</span>
+          <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>© 2025 CHAIRLY. TOKYO.</p>
         </div>
       </footer>
     </div>
   )
 }
 
+function RoleCard({
+  number, title, subtitle, description, features, href, highlighted, bordered
+}: {
+  number: string
+  title: string
+  subtitle: string
+  description: string
+  features: string[]
+  href: string
+  highlighted?: boolean
+  bordered?: boolean
+}) {
+  return (
+    <div
+      className="p-10 flex flex-col gap-6"
+      style={{
+        background: highlighted ? '#1a1410' : 'transparent',
+        borderRight: bordered ? '1px solid #e2dcd4' : 'none',
+      }}
+    >
+      <div>
+        <span className="text-xs tracking-[0.3em]" style={{ color: highlighted ? '#6b7c5c' : '#a09890' }}>
+          {number}
+        </span>
+        <h3 className="font-serif text-2xl mt-2" style={{ fontWeight: 300, color: highlighted ? '#f7f4ef' : '#1a1410' }}>
+          {title}
+        </h3>
+        <p className="text-xs tracking-widest mt-1" style={{ color: highlighted ? '#6b7c5c' : '#a09890' }}>
+          {subtitle.toUpperCase()}
+        </p>
+      </div>
+
+      <div className="w-8 h-px" style={{ background: highlighted ? '#6b7c5c' : '#e2dcd4' }} />
+
+      <p className="text-xs leading-loose" style={{ color: highlighted ? '#a09890' : '#6b6459', fontWeight: 300 }}>
+        {description}
+      </p>
+
+      <ul className="space-y-2">
+        {features.map((f, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs" style={{ color: highlighted ? '#6b6459' : '#a09890' }}>
+            <span style={{ color: highlighted ? '#6b7c5c' : '#c9b99a', marginTop: '1px' }}>—</span>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <Link
+        href={href}
+        className="mt-auto text-xs tracking-widest transition-opacity hover:opacity-60 inline-flex items-center gap-2"
+        style={{ color: highlighted ? '#f7f4ef' : '#6b7c5c' }}
+      >
+        登録する →
+      </Link>
+    </div>
+  )
+}
+
 const SAMPLE_HAIRDRESSERS = [
-  { id: 1, name: '田中 美咲', specialty: 'カット・カラー・ハイライト', area: '渋谷', price: 6000, rating: '4.9', emoji: '✂️', gradient: 'linear-gradient(135deg, #1e3a5f, #0f2440)' },
-  { id: 2, name: '鈴木 健太', specialty: 'メンズカット・パーマ', area: '新宿', price: 5000, rating: '4.8', emoji: '💇', gradient: 'linear-gradient(135deg, #1a2f1a, #0f1f0f)' },
-  { id: 3, name: '山田 花子', specialty: 'トリートメント・縮毛矯正', area: '表参道', price: 8000, rating: '5.0', emoji: '💆', gradient: 'linear-gradient(135deg, #3d1a4a, #1a0f2a)' },
+  { id: 1, name: '田中 美咲', specialty: 'カラー・ハイライト', area: '渋谷', price: 6000, emoji: '✂️', bg: '#f0ece4' },
+  { id: 2, name: '鈴木 健太', specialty: 'メンズカット', area: '新宿', price: 5000, emoji: '💇', bg: '#ede9e2' },
+  { id: 3, name: '山田 花子', specialty: '縮毛矯正', area: '表参道', price: 8000, emoji: '💆', bg: '#e8e3dc' },
 ]

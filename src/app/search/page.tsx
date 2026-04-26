@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, MapPin, Star, Clock, ChevronRight, Loader2, Filter } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Hairdresser, Profile } from '@/types'
 
@@ -25,14 +25,8 @@ export default function SearchPage() {
 
   const loadHairdressers = async () => {
     setLoading(true)
-    let query = supabase
-      .from('hairdressers')
-      .select('*, profiles(id, name, avatar_url, role, created_at)')
-
-    if (areaFilter !== 'すべて') {
-      query = query.eq('area', areaFilter)
-    }
-
+    let query = supabase.from('hairdressers').select('*, profiles(id, name, avatar_url, role, created_at)')
+    if (areaFilter !== 'すべて') query = query.eq('area', areaFilter)
     const { data } = await query.limit(20)
     setHairdressers((data || []) as HairdresserWithProfile[])
     setLoading(false)
@@ -41,45 +35,42 @@ export default function SearchPage() {
   const filtered = hairdressers.filter(h => {
     if (!keyword) return true
     const k = keyword.toLowerCase()
-    return (
-      h.profiles?.name?.toLowerCase().includes(k) ||
-      h.bio?.toLowerCase().includes(k) ||
-      h.menus?.some(m => m.name.toLowerCase().includes(k))
-    )
+    return h.profiles?.name?.toLowerCase().includes(k) || h.bio?.toLowerCase().includes(k) || h.menus?.some(m => m.name.toLowerCase().includes(k))
   })
 
   return (
-    <div className="min-h-screen px-4 py-8" style={{ background: '#0F172A' }}>
+    <div className="min-h-screen px-6 py-16" style={{ background: '#f7f4ef' }}>
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-2">美容師を探す</h1>
-        <p className="text-slate-400 mb-6">東京エリアの美容師を検索できます</p>
 
-        {/* Search bar */}
-        <div className="flex gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="名前・メニューで検索"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 border border-slate-700 focus:border-blue-500 focus:outline-none transition-colors"
-              style={{ background: '#1E293B' }}
-            />
-          </div>
+        {/* Header */}
+        <div className="mb-16">
+          <p className="text-xs tracking-[0.3em] mb-3" style={{ color: '#a09890' }}>SEARCH</p>
+          <h1 className="font-serif text-4xl" style={{ fontWeight: 300 }}>美容師を探す</h1>
+        </div>
+
+        {/* Search */}
+        <div className="mb-8 border-b pb-8" style={{ borderColor: '#e2dcd4' }}>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="名前・メニューで検索..."
+            className="w-full max-w-md px-0 py-2 text-sm border-0 border-b focus:outline-none bg-transparent"
+            style={{ borderColor: '#e2dcd4', color: '#1a1410', borderBottom: '1px solid #e2dcd4' }}
+          />
         </div>
 
         {/* Area filter */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto pb-4 mb-12 scrollbar-hide">
           {AREAS.map(area => (
             <button
               key={area}
               onClick={() => setAreaFilter(area)}
-              className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-sm border transition-all ${
-                areaFilter === area
-                  ? 'border-blue-500 bg-blue-500/15 text-blue-300 font-medium'
-                  : 'border-slate-700 text-slate-400 hover:border-slate-500'
-              }`}
+              className="whitespace-nowrap text-xs tracking-widest pb-1 border-b-2 transition-all"
+              style={{
+                borderColor: areaFilter === area ? '#1a1410' : 'transparent',
+                color: areaFilter === area ? '#1a1410' : '#a09890',
+              }}
             >
               {area}
             </button>
@@ -89,69 +80,58 @@ export default function SearchPage() {
         {/* Results */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-blue-400" size={32} />
+            <Loader2 className="animate-spin" size={20} style={{ color: '#6b7c5c' }} />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-slate-500">
-            <Search size={40} className="mx-auto mb-3 opacity-30" />
-            <p>該当する美容師が見つかりませんでした</p>
+          <div className="py-20 text-center">
+            <p className="text-xs tracking-widest" style={{ color: '#a09890' }}>NO RESULTS FOUND</p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {filtered.map(h => (
-              <Link
-                key={h.id}
-                href={`/hairdressers/${h.id}`}
-                className="rounded-2xl border border-slate-700 overflow-hidden group hover:border-blue-500/50 hover:-translate-y-0.5 transition-all"
-                style={{ background: '#1E293B' }}
-              >
-                {/* Avatar / header */}
-                <div className="h-36 flex items-center justify-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f, #0f2440)' }}>
+              <Link key={h.id} href={`/hairdressers/${h.id}`} className="group block">
+                {/* Photo placeholder */}
+                <div
+                  className="aspect-[4/5] mb-4 overflow-hidden flex items-center justify-center relative"
+                  style={{ background: '#f0ece4' }}
+                >
                   {h.profiles?.avatar_url ? (
-                    <img src={h.profiles.avatar_url} alt={h.profiles.name} className="w-full h-full object-cover" />
+                    <img src={h.profiles.avatar_url} alt={h.profiles.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-blue-500/30 flex items-center justify-center text-2xl font-bold text-blue-300">
-                      {h.profiles?.name?.[0] || '?'}
+                    <div className="text-center">
+                      <div className="font-serif text-6xl mb-2" style={{ color: '#e2dcd4', fontWeight: 300 }}>
+                        {h.profiles?.name?.[0] || '?'}
+                      </div>
+                      <p className="text-xs tracking-widest" style={{ color: '#c9b99a' }}>NO PHOTO</p>
                     </div>
                   )}
+                  {/* Area badge */}
+                  <div className="absolute bottom-3 left-3">
+                    <span className="text-xs px-2 py-1 tracking-wider" style={{ background: 'rgba(247,244,239,0.9)', color: '#6b6459' }}>
+                      {h.area}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="p-4">
+                <div>
                   <div className="flex items-start justify-between mb-1">
-                    <h3 className="font-semibold text-white group-hover:text-blue-300 transition-colors">
-                      {h.profiles?.name || '未設定'}
-                    </h3>
-                  </div>
-
-                  {h.bio && (
-                    <p className="text-slate-400 text-xs mb-2 line-clamp-2">{h.bio}</p>
-                  )}
-
-                  {h.menus && h.menus.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {h.menus.slice(0, 3).map((m, i) => (
-                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300">
-                          {m.name}
-                        </span>
-                      ))}
-                      {h.menus.length > 3 && (
-                        <span className="text-xs text-slate-500">+{h.menus.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin size={10} />
-                      {h.area || '東京'}
-                    </span>
+                    <h3 className="text-sm font-medium" style={{ color: '#1a1410' }}>{h.profiles?.name || '未設定'}</h3>
                     {h.menus && h.menus.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Clock size={10} />
-                        ¥{Math.min(...h.menus.map(m => m.price)).toLocaleString()}〜
+                      <span className="text-xs" style={{ color: '#6b7c5c' }}>
+                        ¥{Math.min(...h.menus.map(m => m.price)).toLocaleString()}–
                       </span>
                     )}
                   </div>
+                  {h.bio && (
+                    <p className="text-xs leading-relaxed line-clamp-2" style={{ color: '#a09890' }}>{h.bio}</p>
+                  )}
+                  {h.menus && h.menus.length > 0 && (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {h.menus.slice(0, 3).map((m, i) => (
+                        <span key={i} className="text-xs" style={{ color: '#c9b99a' }}>{m.name}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}
