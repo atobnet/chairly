@@ -25,7 +25,7 @@ interface BookingWithDetails {
     date: string
     start_time: string
     end_time: string
-    hairdressers?: { profiles?: { name: string } }
+    profiles?: { name: string } | null
   } | null
   salons?: { profiles?: { name: string } } | null
   // old schema compat
@@ -45,19 +45,20 @@ export default function BookingsPage() {
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase.from('bookings')
+      if (!user) { setLoading(false); return }
+      const { data, error } = await supabase.from('bookings')
         .select(`
           *,
           hairdresser_availability(
             hairdresser_id, date, start_time, end_time,
-            hairdressers(profiles(name))
+            profiles!hairdresser_id(name)
           ),
           salons(profiles(name)),
           slots(date, start_time, end_time, hairdressers(profiles(name)))
         `)
         .eq('consumer_id', user.id)
         .order('created_at', { ascending: false })
+      if (error) console.error('bookings query error:', error)
       setBookings((data || []) as BookingWithDetails[])
       setLoading(false)
     }
@@ -87,7 +88,7 @@ export default function BookingsPage() {
   }
 
   const getHairdresserName = (b: BookingWithDetails): string => {
-    return b.hairdresser_availability?.hairdressers?.profiles?.name
+    return b.hairdresser_availability?.profiles?.name
       || b.slots?.hairdressers?.profiles?.name
       || '美容師'
   }
