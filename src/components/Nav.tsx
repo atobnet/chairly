@@ -57,7 +57,7 @@ export default function Nav() {
       }}
     >
       <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="text-sm tracking-[0.25em] font-extralight" style={{ color: '#111111', letterSpacing: '0.25em' }}>
+        <Link href={role ? '/dashboard' : '/'} className="text-sm tracking-[0.25em] font-extralight" style={{ color: '#111111', letterSpacing: '0.25em' }}>
           CHAIRLY
         </Link>
 
