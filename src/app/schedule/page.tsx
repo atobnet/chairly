@@ -38,6 +38,7 @@ export default function SchedulePage() {
   const [startTime, setStartTime] = useState('10:00')
   const [endTime, setEndTime] = useState('18:00')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -78,12 +79,18 @@ export default function SchedulePage() {
     e.preventDefault()
     if (!userId || !selectedDate) return
     setSaving(true)
-    await supabase.from('hairdresser_availability').insert({
+    setSaveError('')
+    const { error } = await supabase.from('hairdresser_availability').insert({
       hairdresser_id: userId,
       date: selectedDate,
       start_time: startTime + ':00',
       end_time: endTime + ':00',
     })
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
+    }
     await loadData(userId)
     setShowModal(false)
     setSaving(false)
@@ -230,6 +237,7 @@ export default function SchedulePage() {
                   </select>
                 </div>
               </div>
+              {saveError && <p style={{ fontSize: '0.75rem', color: '#cc0000', fontWeight: 300 }}>{saveError}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)}
                   style={{ flex: 1, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #ebebeb', color: '#999999', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}>
