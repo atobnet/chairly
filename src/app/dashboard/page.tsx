@@ -21,10 +21,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { setLoading(false); return }
 
       const { data: profile } = await supabase.from('profiles').select('role, name').eq('id', user.id).single()
-      if (!profile) return
+      if (!profile) { setLoading(false); return }
       setRole(profile.role as UserRole)
       setName(profile.name)
 
