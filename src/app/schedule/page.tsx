@@ -77,7 +77,8 @@ export default function SchedulePage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userId || !selectedDate) return
+    if (!userId) { setSaveError('ログインセッションが切れています。再ログインしてください。'); return }
+    if (!selectedDate) { setSaveError('日付を選択してください。'); return }
     setSaving(true)
     setSaveError('')
     const { error } = await supabase.from('hairdresser_availability').insert({

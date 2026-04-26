@@ -39,11 +39,20 @@ function SignupForm() {
     setError('')
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
     if (signUpError || !data.user) { setError(signUpError?.message || '登録に失敗しました'); setLoading(false); return }
-    await supabase.from('profiles').insert({ id: data.user.id, role, name })
-    if (role === 'hairdresser') await supabase.from('hairdressers').insert({ id: data.user.id, area: '東京' })
-    else if (role === 'salon') await supabase.from('salons').insert({ id: data.user.id, address: '', price_per_hour: 0 })
-    router.push('/dashboard')
+
+    const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, role, name })
+    if (profileError) { setError('プロフィール登録に失敗しました: ' + profileError.message); setLoading(false); return }
+
+    if (role === 'hairdresser') {
+      const { error: hdError } = await supabase.from('hairdressers').insert({ id: data.user.id, area: '東京' })
+      if (hdError) { setError('美容師プロフィール登録に失敗しました: ' + hdError.message); setLoading(false); return }
+    } else if (role === 'salon') {
+      const { error: salonError } = await supabase.from('salons').insert({ id: data.user.id, address: '', price_per_hour: 0 })
+      if (salonError) { setError('サロン登録に失敗しました: ' + salonError.message); setLoading(false); return }
+    }
+
     router.refresh()
+    router.push('/dashboard')
   }
 
   const roles: { value: UserRole; label: string; en: string }[] = [
