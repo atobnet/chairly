@@ -19,16 +19,13 @@ interface BookingWithDetails {
   booked_start_time: string | null
   booked_end_time: string | null
   created_at: string
-  // new schema relations
+  _hairdresserName?: string | null
   hairdresser_availability?: {
     hairdresser_id: string
     date: string
     start_time: string
     end_time: string
-    profiles?: { name: string } | null
   } | null
-  salons?: { profiles?: { name: string } } | null
-  // old schema compat
   slots?: {
     date: string
     start_time: string
@@ -46,20 +43,39 @@ export default function BookingsPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
-      const { data, error } = await supabase.from('bookings')
+
+      // Step 1: bookingsとhairdresser_availability（FKが存在する結合のみ）
+      const { data: bookingData, error } = await supabase.from('bookings')
         .select(`
           *,
-          hairdresser_availability(
-            hairdresser_id, date, start_time, end_time,
-            profiles!hairdresser_id(name)
-          ),
-          salons(profiles(name)),
+          hairdresser_availability(hairdresser_id, date, start_time, end_time),
           slots(date, start_time, end_time, hairdressers(profiles(name)))
         `)
         .eq('consumer_id', user.id)
         .order('created_at', { ascending: false })
       if (error) console.error('bookings query error:', error)
-      setBookings((data || []) as BookingWithDetails[])
+
+      // Step 2: 美容師プロフィール名を別途取得（hairdresser_availability経由）
+      const hairdresserIds = [...new Set(
+        (bookingData || [])
+          .map((b: { hairdresser_availability?: { hairdresser_id: string } | null }) => b.hairdresser_availability?.hairdresser_id)
+          .filter(Boolean) as string[]
+      )]
+      let profileMap: Record<string, string> = {}
+      if (hairdresserIds.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('id, name').in('id', hairdresserIds)
+        profileMap = Object.fromEntries((profiles || []).map((p: { id: string; name: string }) => [p.id, p.name]))
+      }
+
+      // Step 3: hairdresserNameをマージ
+      const merged = (bookingData || []).map((b) => ({
+        ...b,
+        _hairdresserName: b.hairdresser_availability?.hairdresser_id
+          ? (profileMap[b.hairdresser_availability.hairdresser_id] || '美容師')
+          : null,
+      }))
+
+      setBookings(merged as BookingWithDetails[])
       setLoading(false)
     }
     load()
@@ -81,20 +97,19 @@ export default function BookingsPage() {
     if (b.booked_start_time && b.booked_end_time) {
       return `${b.booked_start_time.slice(0, 5)}–${b.booked_end_time.slice(0, 5)}`
     }
+    if (b.hairdresser_availability?.start_time) {
+      return `${b.hairdresser_availability.start_time.slice(0, 5)}–${b.hairdresser_availability.end_time.slice(0, 5)}`
+    }
     if (b.slots?.start_time) {
-      return `${b.slots.start_time.slice(0, 5)}–${b.slots.end_time.slice(0, 5)}`
+      return `${b.slots.start_time.slice(0, 5)}–${b.slots.end_time?.slice(0, 5)}`
     }
     return ''
   }
 
   const getHairdresserName = (b: BookingWithDetails): string => {
-    return b.hairdresser_availability?.profiles?.name
+    return b._hairdresserName
       || b.slots?.hairdressers?.profiles?.name
       || '美容師'
-  }
-
-  const getSalonName = (b: BookingWithDetails): string | null => {
-    return b.salons?.profiles?.name || null
   }
 
   const statusLabel: Record<string, string> = {
@@ -145,9 +160,6 @@ export default function BookingsPage() {
                             {getBookingDate(b) && new Date(getBookingDate(b)).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
                             　{getBookingTime(b)}
                           </p>
-                          {getSalonName(b) && (
-                            <p style={{ fontSize: '0.7rem', color: '#cccccc', marginTop: '0.125rem', fontWeight: 300 }}>{getSalonName(b)}</p>
-                          )}
                         </div>
                         <span style={{ fontSize: '0.6rem', letterSpacing: '0.15em', color: '#999999', fontWeight: 300 }}>
                           {statusLabel[b.status]}

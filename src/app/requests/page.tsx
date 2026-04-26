@@ -25,7 +25,6 @@ interface BookingRequest {
     start_time: string
     end_time: string
   } | null
-  salons?: { profiles?: { name: string } } | null
   slots?: {
     date: string
     start_time: string
@@ -60,16 +59,16 @@ export default function RequestsPage() {
       if (slotIds.length > 0) conditions.push(`slot_id.in.(${slotIds.join(',')})`)
 
       if (conditions.length > 0) {
-        const { data } = await supabase.from('bookings')
+        const { data, error } = await supabase.from('bookings')
           .select(`
             *,
-            profiles(id, name, avatar_url, role, created_at),
+            profiles!consumer_id(id, name, avatar_url, role, created_at),
             hairdresser_availability(date, start_time, end_time),
-            salons(profiles(name)),
             slots(date, start_time, end_time)
           `)
           .or(conditions.join(','))
           .order('created_at', { ascending: false })
+        if (error) console.error('requests query error:', error)
         setRequests((data || []) as BookingRequest[])
       }
       setLoading(false)
@@ -114,6 +113,9 @@ export default function RequestsPage() {
   const getTime = (r: BookingRequest): string => {
     if (r.booked_start_time && r.booked_end_time) {
       return `${r.booked_start_time.slice(0, 5)}–${r.booked_end_time.slice(0, 5)}`
+    }
+    if (r.hairdresser_availability?.start_time) {
+      return `${r.hairdresser_availability.start_time.slice(0, 5)}–${r.hairdresser_availability.end_time.slice(0, 5)}`
     }
     if (r.slots?.start_time) {
       return `${r.slots.start_time.slice(0, 5)}–${r.slots.end_time.slice(0, 5)}`
@@ -168,12 +170,6 @@ export default function RequestsPage() {
                     <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.375rem', fontWeight: 300 }}>MENU</p>
                     <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{req.menu || '未指定'}</p>
                   </div>
-                  {req.salons?.profiles?.name && (
-                    <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.375rem', fontWeight: 300 }}>SALON</p>
-                      <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>{req.salons.profiles.name}</p>
-                    </div>
-                  )}
                 </div>
 
                 {req.message && (
