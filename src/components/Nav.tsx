@@ -11,16 +11,23 @@ export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const [role, setRole] = useState<UserRole | null>(null)
+  const [loggedIn, setLoggedIn] = useState(false)
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      if (data) setRole(data.role as UserRole)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setLoggedIn(true)
+        const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+        if (data) setRole(data.role as UserRole)
+      } else {
+        setLoggedIn(false)
+        setRole(null)
+      }
     })
+    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -32,6 +39,7 @@ export default function Nav() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     setRole(null)
+    setLoggedIn(false)
     router.push('/')
     router.refresh()
   }
@@ -57,7 +65,7 @@ export default function Nav() {
       }}
     >
       <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-        <Link href={role ? '/dashboard' : '/'} className="text-sm tracking-[0.25em] font-extralight" style={{ color: '#111111', letterSpacing: '0.25em' }}>
+        <Link href={loggedIn ? '/dashboard' : '/'} className="text-sm tracking-[0.25em] font-extralight" style={{ color: '#111111', letterSpacing: '0.25em' }}>
           CHAIRLY
         </Link>
 
