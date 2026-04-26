@@ -79,15 +79,24 @@ export default function RequestsPage() {
 
   const handleConfirm = async (bookingId: string) => {
     await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId)
-    // 旧スキーマ対応: slot_id がある場合は booked に更新
     const req = requests.find(r => r.id === bookingId)
     if (req?.slot_id) {
       await supabase.from('slots').update({ status: 'booked' }).eq('id', req.slot_id)
     }
     setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'confirmed' } : r))
+    fetch('/api/notify/booking-confirmed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId }),
+    }).catch(console.error)
   }
 
   const handleCancel = async (bookingId: string) => {
+    fetch('/api/notify/booking-cancelled', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId }),
+    }).catch(console.error)
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId)
     const req = requests.find(r => r.id === bookingId)
     if (req?.slot_id) {

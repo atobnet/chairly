@@ -147,7 +147,7 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
     const endMinutes = startH * 60 + startM + duration
     const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}:00`
 
-    const { error } = await supabase.from('bookings').insert({
+    const { data: newBooking, error } = await supabase.from('bookings').insert({
       hairdresser_availability_id: selectedSlot.hairdresser_availability_id,
       salon_availability_id: selectedSlot.salon_availability_id,
       salon_id: selectedSalon.id,
@@ -158,9 +158,18 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
       booked_date: selectedSlot.date,
       booked_start_time: selectedTime + ':00',
       booked_end_time: endTime,
-    })
+    }).select().single()
 
     if (error) { alert('予約に失敗しました'); setSubmitting(false); return }
+
+    if (newBooking) {
+      fetch('/api/notify/booking-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: newBooking.id }),
+      }).catch(console.error)
+    }
+
     setSubmitted(true)
     setSubmitting(false)
   }
