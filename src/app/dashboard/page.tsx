@@ -20,6 +20,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
 
@@ -33,7 +34,7 @@ export default function DashboardPage() {
         const slotIds = (slotData || []).map((s: { id: string }) => s.id)
         if (slotIds.length > 0) {
           const { data } = await supabase.from('bookings')
-            .select('*, slots(*), profiles(name, id, role, avatar_url, created_at)')
+            .select('*, slots(*), profiles!consumer_id(name, id, role, avatar_url, created_at)')
             .in('slot_id', slotIds)
             .order('created_at', { ascending: false })
             .limit(8)
@@ -44,7 +45,7 @@ export default function DashboardPage() {
         const slotIds = (slotData || []).map((s: { id: string }) => s.id)
         if (slotIds.length > 0) {
           const { data } = await supabase.from('bookings')
-            .select('*, slots(*), profiles(name, id, role, avatar_url, created_at)')
+            .select('*, slots(*), profiles!consumer_id(name, id, role, avatar_url, created_at)')
             .in('slot_id', slotIds)
             .order('created_at', { ascending: false })
             .limit(8)
@@ -52,13 +53,14 @@ export default function DashboardPage() {
         }
       } else {
         const { data } = await supabase.from('bookings')
-          .select('*, slots(*, hairdressers(profiles(name, id, role, avatar_url, created_at))), profiles(name, id, role, avatar_url, created_at)')
+          .select('*, slots(*, hairdressers(profiles!consumer_id(name, id, role, avatar_url, created_at))), profiles!consumer_id(name, id, role, avatar_url, created_at)')
           .eq('consumer_id', user.id)
           .order('created_at', { ascending: false })
           .limit(8)
         setBookings((data || []) as BookingWithDetails[])
       }
       setLoading(false)
+      } catch { setLoading(false) }
     }
     load()
   }, [])

@@ -17,18 +17,13 @@ export default function Nav() {
   const supabase = createClient()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setLoggedIn(true)
-        const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
-        if (data) setRole(data.role as UserRole)
-      } else {
-        setLoggedIn(false)
-        setRole(null)
-      }
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      setLoggedIn(true)
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+      if (data) setRole(data.role as UserRole)
     })
-    return () => subscription.unsubscribe()
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10)
