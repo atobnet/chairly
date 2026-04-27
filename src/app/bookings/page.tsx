@@ -15,6 +15,7 @@ interface BookingWithDetails {
   menu: string | null
   message: string | null
   status: 'pending' | 'confirmed' | 'cancelled'
+  payment_status?: 'unpaid' | 'paid' | 'refunded' | 'partially_refunded' | null
   booked_date: string | null
   booked_start_time: string | null
   booked_end_time: string | null
@@ -82,8 +83,14 @@ export default function BookingsPage() {
   }, [])
 
   const handleCancel = async (bookingId: string) => {
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId)
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b))
+    const res = await fetch('/api/stripe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId, cancelledBy: 'consumer' }),
+    })
+    if (res.ok) {
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b))
+    }
   }
 
   // Helper: 日付と時間を取得（新旧スキーマ対応）
@@ -166,6 +173,18 @@ export default function BookingsPage() {
                         </span>
                       </div>
                       {b.menu && <p style={{ fontSize: '0.75rem', marginBottom: '0.75rem', color: '#999999', fontWeight: 300 }}>{b.menu}</p>}
+                      <div className="flex items-center gap-4 flex-wrap">
+                      {b.status === 'confirmed' && (!b.payment_status || b.payment_status === 'unpaid') && (
+                        <Link
+                          href={`/payment/${b.id}`}
+                          style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 300, background: '#111111', border: '1px solid #111111', padding: '0.375rem 0.875rem', textDecoration: 'none', letterSpacing: '0.1em' }}
+                        >
+                          決済する
+                        </Link>
+                      )}
+                      {b.status === 'confirmed' && b.payment_status === 'paid' && (
+                        <span style={{ fontSize: '0.6rem', color: '#4a7c59', letterSpacing: '0.15em', fontWeight: 300 }}>PAID</span>
+                      )}
                       {b.status === 'pending' && (
                         <button
                           onClick={() => handleCancel(b.id)}
@@ -174,6 +193,7 @@ export default function BookingsPage() {
                           キャンセルする
                         </button>
                       )}
+                      </div>
                     </div>
                   ))}
                 </div>

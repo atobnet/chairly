@@ -96,7 +96,11 @@ export default function RequestsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bookingId }),
     }).catch(console.error)
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId)
+    await fetch('/api/stripe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId, cancelledBy: 'hairdresser' }),
+    })
     const req = requests.find(r => r.id === bookingId)
     if (req?.slot_id) {
       await supabase.from('slots').update({ status: 'available' }).eq('id', req.slot_id)

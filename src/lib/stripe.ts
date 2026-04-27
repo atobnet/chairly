@@ -1,0 +1,8 @@
+import Stripe from 'stripe'
+
+// サーバーサイドのみで使用（NEXT_PUBLIC_ をつけないこと）
+export function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2026-04-22.dahlia' as const,
+  })
+}

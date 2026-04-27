@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chairly — Booking Mockup v4</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: #f5f5f3; color: #111827;
+    height: 100vh; overflow: hidden;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: 58px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .logo {
+    font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: #111;
+  }
+  .logo span { color: #4f46e5; }
+
+  /* モード切り替えタブ */
+  .mode-tabs {
+    display: flex; align-items: center; gap: 2px;
+    background: #f3f4f6; border-radius: 10px; padding: 3px;
+  }
+  .mode-tab {
+    padding: 6px 14px; border-radius: 7px;
+    font-size: 12.5px; font-weight: 500;
+    cursor: pointer; transition: all 0.18s;
+    color: #6b7280; border: none; background: transparent;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .mode-tab.active {
+    background: #fff; color: #111827; font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .btn-login {
+    padding: 6px 16px; border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: transparent; color: #374151; font-size: 13px; cursor: pointer;
+    font-weight: 500;
+  }
+  .btn-signup {
+    padding: 6px 16px; border-radius: 8px;
+    background: #4f46e5; color: #fff;
+    font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+  }
+
+  /* ── レイアウト ── */
+  .layout { display: flex; height: 100vh; padding-top: 58px; }
+
+  /* ── 左パネル ── */
+  .left-panel {
+    width: 380px; flex-shrink: 0;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* ステップインジケーター */
+  .step-bar {
+    padding: 10px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex; align-items: center; gap: 3px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .step-bar::-webkit-scrollbar { display: none; }
+  .step-chip {
+    padding: 4px 11px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 500; transition: all 0.2s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .step-chip.done { background: #ede9fe; color: #6d28d9; }
+  .step-chip.active { background: #4f46e5; color: #fff; font-weight: 700; }
+  .step-chip.pending { color: #d1d5db; }
+  .step-arrow { color: #d1d5db; font-size: 10px; flex-shrink: 0; }
+
+  .panel-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .panel-title {
+    font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 8px;
+    text-transform: none; letter-spacing: 0;
+  }
+  .search-input {
+    width: 100%;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px; padding: 9px 13px;
+    color: #111827; font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: #4f46e5; background: #fff; }
+  .search-input::placeholder { color: #9ca3af; }
+
+  .filter-row {
+    padding: 8px 16px; display: flex; gap: 6px;
+    border-bottom: 1px solid #f3f4f6; overflow-x: auto; scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    padding: 4px 12px; border-radius: 20px;
+    border: 1px solid #e5e7eb;
+    font-size: 11.5px; color: #6b7280;
+    white-space: nowrap; cursor: pointer; transition: all 0.2s;
+    background: #fff;
+  }
+  .filter-chip.active {
+    background: #4f46e5; border-color: #4f46e5; color: #fff; font-weight: 600;
+  }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 11.5px; color: #9ca3af;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: blink 1.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .list-scroll {
+    flex: 1; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .list-scroll::-webkit-scrollbar { width: 3px; }
+  .list-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+  /* 美容師カード */
+  .stylist-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 12px;
+    cursor: pointer; transition: all 0.18s;
+    display: flex; gap: 11px; align-items: center;
+  }
+  .stylist-card:hover { border-color: #a5b4fc; box-shadow: 0 2px 8px rgba(79,70,229,0.08); }
+  .stylist-card.active { border-color: #4f46e5; box-shadow: 0 2px 10px rgba(79,70,229,0.12); background: #fafafe; }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; position: relative;
+  }
+  .avatar-online::after {
+    content:''; position: absolute; bottom:1px; right:1px;
+    width:9px; height:9px; border-radius:50%;
+    background:#22c55e; border:2px solid #fff;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: 13.5px; font-weight: 700; margin-bottom: 1px; color: #111827; }
+  .card-area { font-size: 11.5px; color: #9ca3af; margin-bottom: 4px; }
+  .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+  .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 8px; background: #ede9fe; color: #6d28d9; }
+  .card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .card-price { font-size: 12.5px; font-weight: 700; color: #111827; }
+  .card-slots { font-size: 11px; color: #16a34a; display: flex; align-items: center; gap: 3px; font-weight: 500; }
+  .slots-dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; }
+
+  /* カレンダー */
+  .calendar-wrap { padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-month { font-size: 13.5px; font-weight: 700; color: #111827; }
+  .cal-nav {
+    background: #f3f4f6; border: 1px solid #e5e7eb;
+    color: #374151; width: 28px; height: 28px;
+    border-radius: 7px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-day-label { font-size: 10px; color: #9ca3af; text-align: center; padding-bottom: 5px; font-weight: 600; }
+  .cal-day {
+    aspect-ratio: 1; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; cursor: pointer; transition: all 0.15s;
+    color: #374151; position: relative;
+  }
+  .cal-day:hover { background: #ede9fe; color: #4f46e5; }
+  .cal-day.has-slot { color: #111827; font-weight: 600; }
+  .cal-day.has-slot::after {
+    content:''; position: absolute; bottom: 3px;
+    width: 4px; height: 4px; border-radius: 50%; background: #22c55e;
+  }
+  .cal-day.selected { background: #4f46e5; color: #fff; font-weight: 700; }
+  .cal-day.selected::after { background: rgba(255,255,255,0.7); }
+  .cal-day.today { border: 1.5px solid #a5b4fc; color: #4f46e5; font-weight: 700; }
+  .cal-day.empty { cursor: default; }
+  .cal-day.past { color: #d1d5db; cursor: default; }
+
+  /* サロンカード */
+  .salon-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 12px;
+    cursor: pointer; transition: all 0.18s;
+  }
+  .salon-card:hover { border-color: #c4b5fd; box-shadow: 0 2px 8px rgba(109,40,217,0.08); }
+  .salon-card.active { border-color: #7c3aed; box-shadow: 0 2px 10px rgba(109,40,217,0.12); background: #fdfafe; }
+  .salon-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .salon-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #f5f3ff;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    flex-shrink: 0;
+  }
+  .salon-name { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; color: #111827; }
+  .salon-address { font-size: 11.5px; color: #9ca3af; }
+  .salon-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .salon-tag { font-size: 10.5px; padding: 2px 8px; border-radius: 8px; background: #f5f3ff; color: #7c3aed; }
+  .salon-dist { font-size: 11.5px; color: #9ca3af; margin-left: auto; }
+
+  /* 地図ガイドバナー（サロン選択ステップ） */
+  .map-guide-banner {
+    background: #fff9db; border: 1px solid #fde68a;
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 12px; color: #92400e;
+    display: flex; align-items: center; gap: 8px; margin: 10px;
+  }
+
+  /* 時間スロット */
+  .slot-section { padding: 10px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+  .slot-date-label { font-size: 11.5px; color: #6b7280; letter-spacing: 0; padding: 0 2px; font-weight: 600; }
+  .slots-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+  .slot-btn {
+    padding: 8px 4px; border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151; font-size: 12px; text-align: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .slot-btn:hover { border-color: #a5b4fc; background: #ede9fe; color: #4f46e5; }
+  .slot-btn.taken { border-color: #f3f4f6; background: #fafafa; color: #d1d5db; cursor: not-allowed; text-decoration: line-through; }
+  .slot-btn.selected { background: #4f46e5; color: #fff; font-weight: 700; border-color: #4f46e5; }
+
+  .back-btn {
+    background: #f3f4f6; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 5px 11px; color: #374151; font-size: 12px; cursor: pointer;
+    font-weight: 500;
+  }
+  .panel-sub { font-size: 11.5px; color: #9ca3af; margin-top: 3px; }
+
+  .confirm-btn {
+    margin: 8px 12px 12px;
+    padding: 13px; border-radius: 11px;
+    background: #4f46e5; color: #fff;
+    font-size: 14px; font-weight: 700;
+    border: none; cursor: pointer; transition: all 0.2s;
+    width: calc(100% - 24px); flex-shrink: 0;
+    letter-spacing: -0.2px;
+  }
+  .confirm-btn:hover { background: #4338ca; }
+  .confirm-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+  .selected-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #ede9fe; border-radius: 8px;
+    padding: 4px 10px; font-size: 11.5px; color: #6d28d9; font-weight: 500;
+  }
+
+  /* ── マップ ── */
+  .map-area {
+    flex: 1; position: relative; overflow: hidden;
+    background: #f0efea;
+  }
+
+  /* ライトマップ背景 */
+  .map-base {
+    position: absolute; inset: 0;
+    background: #f0efea;
+  }
+  .map-block {
+    position: absolute; background: #e8e7df;
+    border-radius: 3px;
+  }
+  .map-park { position: absolute; background: #d4e6c3; border-radius: 4px; }
+  .map-water { position: absolute; background: #b3d4e8; border-radius: 6px; }
+
+  /* 道路 */
+  .road {
+    position: absolute; background: #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.04);
+  }
+  .road.h { height: 8px; left: 0; right: 0; }
+  .road.v { width: 8px; top: 0; bottom: 0; }
+  .road.h.main { height: 14px; }
+  .road.v.main { width: 14px; }
+  .road.h.sm { height: 5px; }
+  .road.v.sm { width: 5px; }
+
+  /* ピン */
+  .pin {
+    position: absolute; transform: translate(-50%,-100%);
+    cursor: pointer; transition: all 0.25s; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .pin:hover { transform: translate(-50%,-100%) scale(1.12); z-index: 20; }
+  .pin.active-pin { transform: translate(-50%,-100%) scale(1.18); z-index: 25; }
+  .pin-body {
+    background: #4f46e5; color: #fff;
+    border-radius: 20px 20px 20px 4px;
+    padding: 5px 10px; font-size: 12px; font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(79,70,229,0.35);
+    display: flex; align-items: center; gap: 5px;
+    transition: all 0.25s;
+  }
+  .pin.hairdresser .pin-body { background: #4f46e5; }
+  .pin.hairdresser.active-pin .pin-body {
+    background: #3730a3;
+    box-shadow: 0 4px 16px rgba(79,70,229,0.45), 0 0 0 4px rgba(79,70,229,0.15);
+  }
+  .pin.salon-pin .pin-body { background: #7c3aed; box-shadow: 0 2px 8px rgba(124,58,237,0.35); }
+  .pin.salon-pin.active-pin .pin-body {
+    background: #5b21b6;
+    box-shadow: 0 4px 16px rgba(124,58,237,0.45), 0 0 0 4px rgba(124,58,237,0.15);
+  }
+  .pin.busy .pin-body { background: #9ca3af; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .pin.dim { opacity: 0.2; pointer-events: none; }
+  .pin-tail {
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid #4f46e5;
+    margin-top: -2px;
+    transition: border-top-color 0.25s;
+  }
+  .pin.salon-pin .pin-tail { border-top-color: #7c3aed; }
+  .pin.busy .pin-tail { border-top-color: #9ca3af; }
+  .pin.hairdresser.active-pin .pin-tail { border-top-color: #3730a3; }
+  .pin.salon-pin.active-pin .pin-tail { border-top-color: #5b21b6; }
+
+  /* マップUIオーバーレイ */
+  .map-top-bar {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 24px; padding: 7px 18px;
+    font-size: 12px; color: #374151;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); white-space: nowrap;
+  }
+  .counter-live { display: flex; align-items: center; gap: 5px; color: #16a34a; font-weight: 600; }
+
+  .map-legend {
+    position: absolute; bottom: 18px; left: 18px;
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 7px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #6b7280; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .map-action-hint {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 9px 18px;
+    font-size: 12px; color: #6b7280;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    white-space: nowrap; transition: all 0.3s;
+  }
+  .map-action-hint strong { color: #111827; }
+
+  /* 地図アクティブ状態（サロン選択ステップ） */
+  .map-area.map-active .map-base { background: #eef2ff; }
+  .map-area.map-active .map-block { background: #e0e7ff; }
+
+  .map-select-overlay {
+    position: absolute; top: 0; left: 0; right: 0;
+    background: linear-gradient(#4f46e5, transparent);
+    height: 80px; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .map-area.map-active .map-select-overlay { opacity: 0.06; }
+
+  .map-cta-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 14px 18px;
+    display: none;
+  }
+  .map-cta-pill {
+    background: #4f46e5; color: #fff;
+    border-radius: 24px; padding: 10px 20px;
+    font-size: 13px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 16px rgba(79,70,229,0.4);
+    animation: floatIn 0.3s ease;
+  }
+  @keyframes floatIn { from{opacity:0;transform:translateY(-8px);} to{opacity:1;transform:translateY(0);} }
+  .map-area.map-active .map-cta-bar { display: flex; justify-content: center; }
+  .map-area.map-active .map-top-bar { display: none; }
+
+  svg.connections { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+  /* 成功モーダル */
+  .success-modal {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(17,24,39,0.4); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .success-modal.show { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 20px; padding: 36px 32px; text-align: center; max-width: 320px;
+    animation: popIn 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  @keyframes popIn { from{opacity:0;transform:scale(0.93);} to{opacity:1;transform:scale(1);} }
+  .modal-icon { font-size: 48px; margin-bottom: 16px; }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: #111827; }
+  .modal-sub { font-size: 13px; color: #6b7280; margin-bottom: 24px; line-height: 1.7; }
+  .modal-btn {
+    padding: 12px 32px; border-radius: 10px;
+    background: #4f46e5; color: #fff;
+    font-size: 14px; font-weight: 700; border: none; cursor: pointer;
+  }
+
+  /* 動線③専用：地図からスタート */
+  .map-start-instruction {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    background: #fafafe;
+  }
+  .map-start-title { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+  .map-start-sub { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .map-start-arrow {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 10px; padding: 8px 12px;
+    background: #ede9fe; border-radius: 9px;
+    font-size: 12px; color: #6d28d9; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Chair<span>ly</span></div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="modeTab1" onclick="switchMode(1)">✂️ 美容師から探す</button>
+    <button class="mode-tab" id="modeTab2" onclick="switchMode(2)">📅 日程から探す</button>
+    <button class="mode-tab" id="modeTab3" onclick="switchMode(3)">📍 近くから探す</button>
+  </div>
+
+  <div class="header-right">
+    <button class="btn-login">ログイン</button>
+    <button class="btn-signup">無料登録</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="left-panel" id="leftPanel">
+    <div class="step-bar" id="stepBar"></div>
+    <div id="panelContent" style="display:flex;flex-direction:column;flex:1;overflow:hidden;"></div>
+  </div>
+
+  <!-- マップ -->
+  <div class="map-area" id="mapArea">
+    <div class="map-base"></div>
+    <div class="map-select-overlay"></div>
+
+    <!-- 街並みの装飾 -->
+    <div class="map-block" style="left:15%;top:12%;width:8%;height:7%"></div>
+    <div class="map-block" style="left:28%;top:8%;width:12%;height:9%"></div>
+    <div class="map-block" style="left:55%;top:15%;width:9%;height:8%"></div>
+    <div class="map-block" style="left:70%;top:8%;width:10%;height:11%"></div>
+    <div class="map-block" style="left:20%;top:45%;width:7%;height:8%"></div>
+    <div class="map-block" style="left:35%;top:65%;width:11%;height:8%"></div>
+    <div class="map-block" style="left:60%;top:60%;width:9%;height:9%"></div>
+    <div class="map-block" style="left:78%;top:55%;width:8%;height:8%"></div>
+    <div class="map-park" style="left:44%;top:42%;width:8%;height:6%"></div>
+    <div class="map-water" style="left:72%;top:72%;width:12%;height:5%"></div>
+
+    <!-- 道路 -->
+    <div class="road h main" style="top:33%"></div>
+    <div class="road h main" style="top:60%"></div>
+    <div class="road h sm" style="top:20%"></div>
+    <div class="road h sm" style="top:75%"></div>
+    <div class="road h sm" style="top:88%"></div>
+    <div class="road v main" style="left:30%"></div>
+    <div class="road v main" style="left:58%"></div>
+    <div class="road v sm" style="left:18%"></div>
+    <div class="road v sm" style="left:72%"></div>
+    <div class="road v sm" style="left:84%"></div>
+
+    <svg class="connections" id="connections"></svg>
+
+    <!-- 美容師ピン -->
+    <div class="pin hairdresser" id="pin-h1" style="left:40%;top:44%" onclick="pinClickHairdresser(1)">
+      <div class="pin-body">💇‍♀️ 田中 美咲</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin hairdresser" id="pin-h2" style="left:56%;top:31%" onclick="pinClickHairdresser(2)">
+      <div class="pin-body">💈 鈴木 健太</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin busy" id="pin-h3" style="left:50%;top:60%">
+      <div class="pin-body">✂️ 山田 花子 <span style="font-size:10px;opacity:.7">満席</span></div><div class="pin-tail"></div>
+    </div>
+    <div class="pin hairdresser" id="pin-h4" style="left:26%;top:64%" onclick="pinClickHairdresser(4)">
+      <div class="pin-body">🎨 伊藤 さくら</div><div class="pin-tail"></div>
+    </div>
+
+    <!-- サロンピン -->
+    <div class="pin salon-pin" id="pin-s1" style="left:45%;top:28%" onclick="pinClickSalon(1)">
+      <div class="pin-body">🏪 表参道 SALON A</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin salon-pin" id="pin-s2" style="left:34%;top:49%" onclick="pinClickSalon(2)">
+      <div class="pin-body">🏪 渋谷シェアサロン</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin salon-pin" id="pin-s3" style="left:63%;top:54%" onclick="pinClickSalon(3)">
+      <div class="pin-body">🏪 新宿スタジオB</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin salon-pin" id="pin-s4" style="left:23%;top:73%" onclick="pinClickSalon(4)">
+      <div class="pin-body">🏪 目黒サロンC</div><div class="pin-tail"></div>
+    </div>
+    <div class="pin salon-pin" id="pin-s5" style="left:69%;top:36%" onclick="pinClickSalon(5)">
+      <div class="pin-body">🏪 原宿スペースD</div><div class="pin-tail"></div>
+    </div>
+
+    <!-- 上部ステータスバー -->
+    <div class="map-top-bar" id="mapTopBar">
+      <div class="counter-live"><div class="live-dot"></div>LIVE</div>
+      <span>美容師 <strong>12名</strong> 稼働中</span>
+      <span style="color:#d1d5db">|</span>
+      <span>サロン <strong>5件</strong> 空き有り</span>
+    </div>
+
+    <!-- サロン選択ステップ時のCTAバー -->
+    <div class="map-cta-bar" id="mapCtaBar">
+      <div class="map-cta-pill">📍 地図上のサロンピンをタップして選択</div>
+    </div>
+
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div>美容師（空き有）</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9ca3af"></div>美容師（満席）</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>レンタルサロン</div>
+    </div>
+
+    <div class="map-action-hint" id="mapHint"></div>
+  </div>
+</div>
+
+<div class="success-modal" id="successModal">
+  <div class="modal-box">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title">予約リクエスト完了</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-btn" onclick="resetAll()">トップに戻る</button>
+  </div>
+</div>
+
+<script>
+// ── データ ──
+const hairdressers = {
+  1: { name:'田中 美咲', area:'渋谷・恵比寿', emoji:'💇‍♀️', tags:['カラー','ハイライト'], price:'¥6,000〜', slots:true, salons:[1,2] },
+  2: { name:'鈴木 健太', area:'新宿・代々木', emoji:'💈', tags:['メンズカット','パーマ'], price:'¥5,000〜', slots:true, salons:[3,5] },
+  3: { name:'山田 花子', area:'表参道・青山', emoji:'✂️', tags:['縮毛矯正','トリートメント'], price:'¥8,000〜', slots:false, salons:[1,3] },
+  4: { name:'伊藤 さくら', area:'目黒・中目黒', emoji:'🎨', tags:['インナーカラー','ブリーチ'], price:'¥9,000〜', slots:true, salons:[2,4] },
+}
+const salons = {
+  1: { name:'表参道 SALON A', address:'渋谷区神宮前4-1-1', tags:['シャンプー台','カラーチェア'], dist:'徒歩5分', hairdressers:[1,3] },
+  2: { name:'渋谷シェアサロン', address:'渋谷区渋谷2-3-5', tags:['完全個室','Wi-Fi完備'], dist:'徒歩8分', hairdressers:[1,4] },
+  3: { name:'新宿スタジオB', address:'新宿区西新宿1-2-3', tags:['広め','駐車場あり'], dist:'徒歩3分', hairdressers:[2,3] },
+  4: { name:'目黒サロンC', address:'目黒区目黒1-5-2', tags:['個室','落ち着いた雰囲気'], dist:'徒歩6分', hairdressers:[4] },
+  5: { name:'原宿スペースD', address:'渋谷区神宮前1-8-1', tags:['オープンスタイル'], dist:'徒歩4分', hairdressers:[2] },
+}
+
+let currentMode = 1, currentStep = 1
+let selectedHairdresser = null, selectedSalon = null
+let selectedDate = null, selectedSlot = null
+let mapSalonSelectMode = false
+
+// ── モード切り替え ──
+function switchMode(mode) {
+  currentMode = mode
+  ;[1,2,3].forEach(i => {
+    document.getElementById('modeTab'+i).className = 'mode-tab' + (i===mode?' active':'')
+  })
+  resetState()
+  if(mode===1) m1_step1()
+  else if(mode===2) m2_step1()
+  else m3_step1()
+}
+
+function resetState() {
+  selectedHairdresser=null; selectedSalon=null; selectedDate=null; selectedSlot=null
+  mapSalonSelectMode=false
+  document.querySelectorAll('.pin').forEach(p=>p.classList.remove('active-pin','dim'))
+  clearConnections()
+  setMapActive(false)
+  currentStep=1
+}
+
+function setMapActive(active) {
+  const ma = document.getElementById('mapArea')
+  if(active) ma.classList.add('map-active')
+  else ma.classList.remove('map-active')
+}
+
+// ══════════════════════════════════════
+// 動線① 美容師 → 地図からサロン → 日時
+// ══════════════════════════════════════
+function m1_step1() {
+  currentStep=1; mapSalonSelectMode=false; setMapActive(false)
+  updateStepBar(['① 美容師を選ぶ','② サロン（地図）','③ 日時を選ぶ'], 1)
+  setHint('<strong>美容師を選ぶ</strong>と、その人が使えるサロンが地図に表示されます')
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">美容師を選ぶ</div>
+      <input class="search-input" type="text" placeholder="名前・メニューで検索">
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip active">すべて</div>
+      <div class="filter-chip">カット</div>
+      <div class="filter-chip">カラー</div>
+      <div class="filter-chip">パーマ</div>
+      <div class="filter-chip">今日空き</div>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>リアルタイム更新中 — 東京エリア</div>
+    <div class="list-scroll">${hairdresserCards('m1')}</div>
+  `
+}
+
+function m1_selectHairdresser(id) {
+  selectedHairdresser=id
+  highlightHairdresser(id)
+  currentStep=2; mapSalonSelectMode=true; setMapActive(true)
+  updateStepBar(['① 美容師を選ぶ','② サロン（地図）','③ 日時を選ぶ'], 2)
+  setHint('<strong>地図のサロンピンをタップ</strong>して選択してください')
+  const h=hairdressers[id]
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m1_step1()">← 戻る</button>
+        <div class="panel-title" style="margin:0">サロンを地図から選ぶ</div>
+      </div>
+      <div class="panel-sub">${h.emoji} ${h.name} が利用できるサロン</div>
+    </div>
+    <div class="map-guide-banner">📍 右の地図でピン（🏪）をタップしてサロンを選択できます</div>
+    <div class="list-scroll">${salonCards(h.salons, 'm1')}</div>
+  `
+}
+
+function m1_selectSalon(sid) {
+  selectedSalon=sid
+  highlightSalon(sid); setMapActive(false); mapSalonSelectMode=false
+  currentStep=3
+  updateStepBar(['① 美容師を選ぶ','② サロン（地図）','③ 日時を選ぶ'], 3)
+  setHint('日時を選んで予約リクエストを送ってください')
+  const h=hairdressers[selectedHairdresser], s=salons[sid]
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m1_selectHairdresser(${selectedHairdresser})">← 戻る</button>
+        <div class="panel-title" style="margin:0">日時を選ぶ</div>
+      </div>
+      <div class="panel-sub">${h.name} × ${s.name}</div>
+    </div>
+    <div class="slot-section">${slotHtml('今日','明日')}</div>
+    <button class="confirm-btn" id="confirmBtn" disabled onclick="showSuccess()">予約リクエストを送る</button>
+  `
+}
+
+// ══════════════════════════════════════
+// 動線② 日程 → 美容師 → 地図からサロン
+// ══════════════════════════════════════
+function m2_step1() {
+  currentStep=1; mapSalonSelectMode=false; setMapActive(false)
+  updateStepBar(['① 日程を選ぶ','② 美容師を選ぶ','③ サロン（地図）','④ 時間を選ぶ'], 1)
+  setHint('<strong>日程を選ぶ</strong>と、その日に空いている美容師が表示されます')
+  document.getElementById('panelContent').innerHTML = `
+    <div class="calendar-wrap">
+      <div class="cal-header">
+        <button class="cal-nav">‹</button>
+        <div class="cal-month">2026年 4月</div>
+        <button class="cal-nav">›</button>
+      </div>
+      <div class="cal-grid">
+        ${['日','月','火','水','木','金','土'].map(d=>`<div class="cal-day-label">${d}</div>`).join('')}
+        ${calDays()}
+      </div>
+    </div>
+    <div style="padding:8px 16px;border-bottom:1px solid #f3f4f6;">
+      <div style="font-size:11.5px;color:#9ca3af;display:flex;align-items:center;gap:5px;">
+        <div class="slots-dot"></div> 空き有りの日程
+      </div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:13px;padding:20px;text-align:center;">
+      日程を選んでください
+    </div>
+  `
+}
+
+function calDays() {
+  const days = ['','','','','','','','','','','','','','','','','','','','','','','','','','26','27','28','29','30']
+  return days.map(d => {
+    if(!d) return `<div class="cal-day empty"></div>`
+    const day=parseInt(d), isPast=day<26, isToday=day===26, hasSlot=[27,28,29,30].includes(day)
+    const cls = [isPast?'past':'',isToday?'today':'',hasSlot?'has-slot':''].filter(Boolean).join(' ')
+    const click = (hasSlot||isToday) ? `onclick="m2_selectDate('4月${d}日')"` : ''
+    return `<div class="cal-day ${cls}" ${click}>${d}</div>`
+  }).join('')
+}
+
+function m2_selectDate(date) {
+  selectedDate=date; currentStep=2
+  updateStepBar(['① 日程を選ぶ','② 美容師を選ぶ','③ サロン（地図）','④ 時間を選ぶ'], 2)
+  setHint(`<strong>${date}</strong> に空いている美容師を選んでください`)
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m2_step1()">← 戻る</button>
+        <div class="panel-title" style="margin:0">美容師を選ぶ</div>
+      </div>
+      <div style="margin-top:6px;"><span class="selected-badge">📅 ${date}</span></div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip active">すべて</div>
+      <div class="filter-chip">カット</div>
+      <div class="filter-chip">カラー</div>
+      <div class="filter-chip">パーマ</div>
+    </div>
+    <div class="list-scroll">${hairdresserCards('m2')}</div>
+  `
+}
+
+function m2_selectHairdresser(id) {
+  selectedHairdresser=id
+  highlightHairdresser(id)
+  currentStep=3; mapSalonSelectMode=true; setMapActive(true)
+  updateStepBar(['① 日程を選ぶ','② 美容師を選ぶ','③ サロン（地図）','④ 時間を選ぶ'], 3)
+  setHint('地図のサロンピンをタップして選択してください')
+  const h=hairdressers[id]
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m2_selectDate('${selectedDate}')">← 戻る</button>
+        <div class="panel-title" style="margin:0">サロンを地図から選ぶ</div>
+      </div>
+      <div style="margin-top:6px;"><span class="selected-badge">📅 ${selectedDate}</span></div>
+      <div class="panel-sub">${h.emoji} ${h.name} が利用できるサロン</div>
+    </div>
+    <div class="map-guide-banner">📍 右の地図でピン（🏪）をタップしてサロンを選択できます</div>
+    <div class="list-scroll">${salonCards(h.salons, 'm2')}</div>
+  `
+}
+
+function m2_selectSalon(sid) {
+  selectedSalon=sid
+  highlightSalon(sid); setMapActive(false); mapSalonSelectMode=false
+  currentStep=4
+  updateStepBar(['① 日程を選ぶ','② 美容師を選ぶ','③ サロン（地図）','④ 時間を選ぶ'], 4)
+  setHint('時間を選んで予約リクエストを送ってください')
+  const h=hairdressers[selectedHairdresser], s=salons[sid]
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m2_selectHairdresser(${selectedHairdresser})">← 戻る</button>
+        <div class="panel-title" style="margin:0">時間を選ぶ</div>
+      </div>
+      <div class="panel-sub">${h.name} × ${s.name}</div>
+      <div style="margin-top:6px;"><span class="selected-badge">📅 ${selectedDate}</span></div>
+    </div>
+    <div class="slot-section">${slotHtml(selectedDate, null)}</div>
+    <button class="confirm-btn" id="confirmBtn" disabled onclick="showSuccess()">予約リクエストを送る</button>
+  `
+}
+
+// ══════════════════════════════════════
+// 動線③ 地図からサロン → 美容師 → 日時
+// ══════════════════════════════════════
+function m3_step1() {
+  currentStep=1; mapSalonSelectMode=true; setMapActive(true)
+  updateStepBar(['① サロン（地図）','② 美容師を選ぶ','③ 日時を選ぶ'], 1)
+  setHint('<strong>地図のサロン（🏪）をタップ</strong>して近くのサロンを選んでください')
+  // 全サロンピンをハイライト
+  document.querySelectorAll('.pin.hairdresser,.pin.busy').forEach(p=>p.classList.add('dim'))
+  document.querySelectorAll('.pin.salon-pin').forEach(p=>p.classList.remove('dim'))
+  document.getElementById('panelContent').innerHTML = `
+    <div class="map-start-instruction">
+      <div class="map-start-title">📍 近くのサロンから探す</div>
+      <div class="map-start-sub">地図上のサロン（紫のピン）をタップして選んでください。そのサロンで利用できる美容師が表示されます。</div>
+      <div class="map-start-arrow">▶ 右の地図でサロンピンをタップ</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;">
+      <div style="font-size:11.5px;font-weight:700;color:#6b7280;padding:4px 2px;">近くのサロン一覧</div>
+      ${Object.entries(salons).map(([sid,s])=>`
+        <div class="salon-card" onclick="m3_selectSalon(${sid})">
+          <div class="salon-card-top">
+            <div class="salon-icon">🏪</div>
+            <div>
+              <div class="salon-name">${s.name}</div>
+              <div class="salon-address">📍 ${s.address}</div>
+            </div>
+          </div>
+          <div class="salon-meta">
+            ${s.tags.map(t=>`<span class="salon-tag">${t}</span>`).join('')}
+            <span class="salon-dist">🚶 ${s.dist}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function m3_selectSalon(sid) {
+  selectedSalon=sid
+  mapSalonSelectMode=false; setMapActive(false)
+  // サロンピンをアクティブに、美容師ピンを表示
+  document.querySelectorAll('.pin').forEach(p=>p.classList.remove('active-pin','dim'))
+  document.getElementById('pin-s'+sid)?.classList.add('active-pin')
+  // そのサロンに対応する美容師ピン以外をdim
+  const s=salons[sid]
+  document.querySelectorAll('.pin.hairdresser,.pin.busy').forEach(p=>p.classList.add('dim'))
+  s.hairdressers.forEach(hid=>{
+    document.getElementById('pin-h'+hid)?.classList.remove('dim')
+    document.getElementById('pin-h'+hid)?.classList.add('active-pin')
+  })
+  // 逆方向の接続線
+  drawConnectionsReverse(sid, s.hairdressers)
+  currentStep=2
+  updateStepBar(['① サロン（地図）','② 美容師を選ぶ','③ 日時を選ぶ'], 2)
+  setHint(`<strong>${salons[sid].name}</strong> で利用できる美容師を選んでください`)
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m3_step1()">← 戻る</button>
+        <div class="panel-title" style="margin:0">美容師を選ぶ</div>
+      </div>
+      <div class="panel-sub">🏪 ${salons[sid].name}</div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip active">すべて</div>
+      <div class="filter-chip">カット</div>
+      <div class="filter-chip">カラー</div>
+    </div>
+    <div class="list-scroll">${hairdresserCards('m3', s.hairdressers)}</div>
+  `
+}
+
+function m3_selectHairdresser(id) {
+  selectedHairdresser=id
+  clearConnections()
+  document.querySelectorAll('.pin').forEach(p=>p.classList.remove('active-pin','dim'))
+  document.getElementById('pin-h'+id)?.classList.add('active-pin')
+  document.getElementById('pin-s'+selectedSalon)?.classList.add('active-pin')
+  currentStep=3
+  updateStepBar(['① サロン（地図）','② 美容師を選ぶ','③ 日時を選ぶ'], 3)
+  setHint('日時を選んで予約リクエストを送ってください')
+  const h=hairdressers[id], s=salons[selectedSalon]
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-header">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="back-btn" onclick="m3_selectSalon(${selectedSalon})">← 戻る</button>
+        <div class="panel-title" style="margin:0">日時を選ぶ</div>
+      </div>
+      <div class="panel-sub">${h.name} × ${s.name}</div>
+    </div>
+    <div class="slot-section">${slotHtml('今日','明日')}</div>
+    <button class="confirm-btn" id="confirmBtn" disabled onclick="showSuccess()">予約リクエストを送る</button>
+  `
+}
+
+// ── 共通パーツ ──
+function hairdresserCards(mode='m1', ids=null) {
+  const entries = ids
+    ? ids.map(id=>[String(id), hairdressers[id]])
+    : Object.entries(hairdressers)
+  return entries.map(([id,h])=>`
+    <div class="stylist-card" id="card-${id}" onclick="${mode==='m1'?`m1_selectHairdresser(${id})`:mode==='m2'?`m2_selectHairdresser(${id})`:`m3_selectHairdresser(${id})`}">
+      <div class="avatar ${h.slots?'avatar-online':''}" style="background:linear-gradient(135deg,${avatarColor(id)})">${h.emoji}</div>
+      <div class="card-info">
+        <div class="card-name">${h.name}</div>
+        <div class="card-area">📍 ${h.area}</div>
+        <div class="card-tags">${h.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <div class="card-bottom">
+          <div class="card-price">${h.price}</div>
+          ${h.slots
+            ? `<div class="card-slots"><div class="slots-dot"></div>空き有り</div>`
+            : `<div style="font-size:11px;color:#d1d5db">満席</div>`}
+        </div>
+      </div>
+    </div>
+  `).join('')
+}
+
+function salonCards(salonIds, mode) {
+  return salonIds.map(sid=>{
+    const s=salons[sid]
+    const fn = mode==='m1' ? `m1_selectSalon(${sid})` : `m2_selectSalon(${sid})`
+    return `
+      <div class="salon-card" id="sc-${sid}" onclick="${fn}">
+        <div class="salon-card-top">
+          <div class="salon-icon">🏪</div>
+          <div>
+            <div class="salon-name">${s.name}</div>
+            <div class="salon-address">📍 ${s.address}</div>
+          </div>
+        </div>
+        <div class="salon-meta">
+          ${s.tags.map(t=>`<span class="salon-tag">${t}</span>`).join('')}
+          <span class="salon-dist">🚶 ${s.dist}</span>
+        </div>
+      </div>
+    `
+  }).join('')
+}
+
+function slotHtml(label1, label2) {
+  const s1 = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00']
+  const s2 = label2 ? ['10:00','11:00','12:00','13:00','14:00','15:00'] : null
+  let html = `<div class="slot-date-label">${label1}</div>
+    <div class="slots-grid">${s1.map((t,i)=>`<div class="slot-btn ${i<2||i===4?'taken':''}" onclick="selectSlot(this)">${t}</div>`).join('')}</div>`
+  if(s2) html += `<div class="slot-date-label" style="margin-top:4px">${label2}</div>
+    <div class="slots-grid">${s2.map((t,i)=>`<div class="slot-btn ${i===2?'taken':''}" onclick="selectSlot(this)">${t}</div>`).join('')}</div>`
+  return html
+}
+
+function avatarColor(id) {
+  return {1:'#a5b4fc,#c4b5fd',2:'#fcd34d,#fb923c',3:'#6ee7b7,#a5b4fc',4:'#f9a8d4,#c4b5fd'}[id]||'#a5b4fc,#c4b5fd'
+}
+
+function selectSlot(el) {
+  if(el.classList.contains('taken')) return
+  document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('selected'))
+  el.classList.add('selected')
+  selectedSlot=el.textContent
+  const btn=document.getElementById('confirmBtn')
+  if(btn) btn.disabled=false
+}
+
+function updateStepBar(labels, active) {
+  const bar=document.getElementById('stepBar')
+  bar.innerHTML = labels.map((l,i)=>{
+    const state = i+1<active?'done':i+1===active?'active':'pending'
+    return `${i>0?'<span class="step-arrow">›</span>':''}<div class="step-chip ${state}">${l}</div>`
+  }).join('')
+}
+
+function setHint(html) {
+  const el=document.getElementById('mapHint')
+  if(html) { el.innerHTML=html; el.style.display='block' }
+  else { el.style.display='none' }
+}
+
+function highlightHairdresser(id) {
+  document.querySelectorAll('.pin.hairdresser,.pin.busy').forEach(p=>p.classList.add('dim'))
+  document.getElementById('pin-h'+id)?.classList.remove('dim')
+  document.getElementById('pin-h'+id)?.classList.add('active-pin')
+  document.querySelectorAll('.pin.salon-pin').forEach(p=>{ p.classList.remove('active-pin'); p.classList.add('dim') })
+  hairdressers[id].salons.forEach(sid=>{
+    document.getElementById('pin-s'+sid)?.classList.remove('dim')
+    document.getElementById('pin-s'+sid)?.classList.add('active-pin')
+  })
+  drawConnections(id, hairdressers[id].salons)
+}
+
+function highlightSalon(sid) {
+  document.querySelectorAll('.pin.salon-pin').forEach(p=>{ p.classList.remove('active-pin'); p.classList.add('dim') })
+  document.getElementById('pin-s'+sid)?.classList.remove('dim')
+  document.getElementById('pin-s'+sid)?.classList.add('active-pin')
+}
+
+function pinClickHairdresser(id) {
+  if(currentMode===1 && currentStep===1) m1_selectHairdresser(id)
+  else if(currentMode===2 && currentStep===2 && selectedDate) m2_selectHairdresser(id)
+  else if(currentMode===3 && currentStep===2) m3_selectHairdresser(id)
+}
+
+function pinClickSalon(sid) {
+  if(!mapSalonSelectMode) return
+  if(currentMode===1 && currentStep===2 && selectedHairdresser) {
+    if(hairdressers[selectedHairdresser].salons.includes(sid)) m1_selectSalon(sid)
+  } else if(currentMode===2 && currentStep===3 && selectedHairdresser) {
+    if(hairdressers[selectedHairdresser].salons.includes(sid)) m2_selectSalon(sid)
+  } else if(currentMode===3 && currentStep===1) {
+    m3_selectSalon(sid)
+  }
+}
+
+function drawConnections(hid, salonIds) {
+  clearConnections()
+  const map=document.getElementById('mapArea')
+  const svg=document.getElementById('connections')
+  const rect=map.getBoundingClientRect()
+  const hPin=document.getElementById('pin-h'+hid)
+  if(!hPin) return
+  const hr=hPin.getBoundingClientRect()
+  const hx=hr.left-rect.left+hr.width/2, hy=hr.top-rect.top+hr.height
+  salonIds.forEach(sid=>{
+    const sPin=document.getElementById('pin-s'+sid)
+    if(!sPin) return
+    const sr=sPin.getBoundingClientRect()
+    const sx=sr.left-rect.left+sr.width/2, sy=sr.top-rect.top+sr.height
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line')
+    line.setAttribute('x1',hx); line.setAttribute('y1',hy)
+    line.setAttribute('x2',sx); line.setAttribute('y2',sy)
+    line.setAttribute('stroke','rgba(124,58,237,0.4)')
+    line.setAttribute('stroke-width','2')
+    line.setAttribute('stroke-dasharray','7 5')
+    svg.appendChild(line)
+  })
+}
+
+function drawConnectionsReverse(sid, hIds) {
+  clearConnections()
+  const map=document.getElementById('mapArea')
+  const svg=document.getElementById('connections')
+  const rect=map.getBoundingClientRect()
+  const sPin=document.getElementById('pin-s'+sid)
+  if(!sPin) return
+  const sr=sPin.getBoundingClientRect()
+  const sx=sr.left-rect.left+sr.width/2, sy=sr.top-rect.top+sr.height
+  hIds.forEach(hid=>{
+    const hPin=document.getElementById('pin-h'+hid)
+    if(!hPin) return
+    const hr=hPin.getBoundingClientRect()
+    const hx=hr.left-rect.left+hr.width/2, hy=hr.top-rect.top+hr.height
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line')
+    line.setAttribute('x1',sx); line.setAttribute('y1',sy)
+    line.setAttribute('x2',hx); line.setAttribute('y2',hy)
+    line.setAttribute('stroke','rgba(79,70,229,0.4)')
+    line.setAttribute('stroke-width','2')
+    line.setAttribute('stroke-dasharray','7 5')
+    svg.appendChild(line)
+  })
+}
+
+function clearConnections() { document.getElementById('connections').innerHTML='' }
+
+function showSuccess() {
+  const h=hairdressers[selectedHairdresser], s=salons[selectedSalon]
+  document.getElementById('modalSub').innerHTML = `${h.name} さんに予約リクエストを送りました。<br>${s.name} / ${selectedSlot||'選択済み'}<br><br>確認後、通知でお知らせします。`
+  document.getElementById('successModal').classList.add('show')
+}
+
+function resetAll() {
+  document.getElementById('successModal').classList.remove('show')
+  resetState()
+  if(currentMode===1) m1_step1()
+  else if(currentMode===2) m2_step1()
+  else m3_step1()
+}
+
+// 初期表示
+m1_step1()
+</script>
+</body>
+</html>
