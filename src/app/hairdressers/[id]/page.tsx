@@ -87,6 +87,10 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   const router = useRouter()
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [id])
+
+  useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id || null)
