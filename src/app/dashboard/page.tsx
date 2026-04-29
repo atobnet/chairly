@@ -16,6 +16,8 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<BookingWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
+  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null)
+  const [connectingStripe, setConnectingStripe] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -23,10 +25,11 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
 
-      const { data: profile } = await supabase.from('profiles').select('role, name').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('profiles').select('role, name, stripe_account_id').eq('id', user.id).single()
       if (!profile) { setLoading(false); return }
       setRole(profile.role as UserRole)
       setName(profile.name)
+      setStripeAccountId(profile.stripe_account_id || null)
 
       if (profile.role === 'hairdresser') {
         const { data: slotData } = await supabase.from('slots').select('id').eq('hairdresser_id', user.id)
@@ -94,6 +97,43 @@ export default function DashboardPage() {
             こんにちは、{name}
           </h1>
         </div>
+
+        {/* Stripe Connect バナー（美容師・サロンのみ） */}
+        {(role === 'hairdresser' || role === 'salon') && !stripeAccountId && (
+          <div style={{ padding: '1.25rem 1.5rem', border: '1px solid #e5c97e', background: '#fffbf0', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <p style={{ fontSize: '0.65rem', letterSpacing: '0.2em', color: '#c9a84c', fontWeight: 300, marginBottom: '0.25rem' }}>ACTION REQUIRED</p>
+              <p style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>報酬を受け取るにはStripe口座の連携が必要です</p>
+            </div>
+            <button
+              onClick={async () => {
+                setConnectingStripe(true)
+                try {
+                  const res = await fetch('/api/stripe/connect', { method: 'POST' })
+                  const data = await res.json()
+                  if (!res.ok || !data.url) {
+                    alert('Stripe連携の開始に失敗しました。しばらく後に再試行してください。')
+                    setConnectingStripe(false)
+                    return
+                  }
+                  window.location.href = data.url
+                } catch {
+                  alert('ネットワークエラーが発生しました。')
+                  setConnectingStripe(false)
+                }
+              }}
+              disabled={connectingStripe}
+              style={{ padding: '0.5rem 1.25rem', background: '#111111', color: '#ffffff', border: 'none', cursor: connectingStripe ? 'not-allowed' : 'pointer', fontSize: '0.7rem', letterSpacing: '0.1em', fontWeight: 300, opacity: connectingStripe ? 0.5 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              {connectingStripe ? '接続中...' : 'Stripe口座を連携する'}
+            </button>
+          </div>
+        )}
+        {(role === 'hairdresser' || role === 'salon') && stripeAccountId && (
+          <div style={{ padding: '0.75rem 1.5rem', border: '1px solid #d4edda', background: '#f8fff9', marginBottom: '2rem' }}>
+            <p style={{ fontSize: '0.7rem', color: '#4a7c59', fontWeight: 300, letterSpacing: '0.1em' }}>Stripe口座連携済み ✓</p>
+          </div>
+        )}
 
         {/* Quick links */}
         <div className="grid sm:grid-cols-3 mb-16" style={{ border: '1px solid #ebebeb' }}>

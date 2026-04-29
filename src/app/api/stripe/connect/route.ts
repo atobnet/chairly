@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.headers.get('host')}`
 
   const stripe = getStripe()
   const account = await stripe.accounts.create({ type: 'express', country: 'JP' })
@@ -16,8 +18,8 @@ export async function POST(_req: NextRequest) {
 
   const accountLink = await stripe.accountLinks.create({
     account: account.id,
-    refresh_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?stripe=refresh`,
-    return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?stripe=connected`,
+    refresh_url: `${baseUrl}/dashboard?stripe=refresh`,
+    return_url: `${baseUrl}/dashboard?stripe=connected`,
     type: 'account_onboarding',
   })
 
