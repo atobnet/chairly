@@ -8,8 +8,6 @@ export default function HomePage() {
       {/* ① ヒーロー */}
       <section className="min-h-[100svh] flex flex-col justify-between px-8 pt-24 pb-16" style={{ background: '#ffffff' }}>
         <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center">
-          <p className="text-xs tracking-[0.4em] mb-16" style={{ color: '#cccccc' }}>TOKYO — 2025</p>
-
           <p
             className="leading-none mb-10"
             style={{
@@ -176,7 +174,7 @@ export default function HomePage() {
       <footer className="px-8 py-10" style={{ borderTop: '1px solid #1e293b', background: '#0F172A' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <span className="text-xs tracking-[0.25em]" style={{ color: '#f8fafc', fontWeight: 200 }}>CHAIRLY</span>
-          <p className="text-xs tracking-widest" style={{ color: '#475569' }}>© 2025 CHAIRLY TOKYO</p>
+          <p className="text-xs tracking-widest" style={{ color: '#475569' }}>© 2026 CHAIRLY TOKYO</p>
         </div>
       </footer>
 
