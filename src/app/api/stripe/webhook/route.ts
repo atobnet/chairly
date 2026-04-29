@@ -31,19 +31,22 @@ export async function POST(req: NextRequest) {
   // manual capture: カード承認時（サービス完了後にキャプチャ）
   if (event.type === 'payment_intent.amount_capturable_updated') {
     const pi = event.data.object as Stripe.PaymentIntent
+    // キャンセル済み予約は上書きしない
     await supabase.from('bookings')
       .update({ payment_status: 'authorized' })
       .eq('payment_intent_id', pi.id)
+      .neq('status', 'cancelled')
   }
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as Stripe.PaymentIntent
     const { bookingId, hairdresserAmount, salonAmount, hairdresserStripeId, salonStripeId } = pi.metadata
 
-    // payment_intent_idで直接検索
+    // payment_intent_idで直接検索（キャンセル済みは上書きしない）
     await supabase.from('bookings')
       .update({ payment_status: 'paid' })
       .eq('payment_intent_id', pi.id)
+      .neq('status', 'cancelled')
 
     if (bookingId) {
 
