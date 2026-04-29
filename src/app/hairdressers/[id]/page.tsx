@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight, Check, Heart } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -12,6 +12,14 @@ const SalonMap = dynamic(() => import('@/components/SalonMap'), { ssr: false })
 
 interface HairdresserWithProfile extends Hairdresser {
   profiles: Profile
+}
+
+interface Review {
+  id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  profiles?: { name: string } | null
 }
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -58,6 +66,10 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [avgRating, setAvgRating] = useState<number | null>(null)
+  const [isFavorited, setIsFavorited] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -66,14 +78,27 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id || null)
 
-      const [{ data: hData }, { data: hsData }] = await Promise.all([
+      const [{ data: hData }, { data: hsData }, { data: reviewData }] = await Promise.all([
         supabase.from('hairdressers').select('*, profiles(id, name, avatar_url, role, created_at)').eq('id', id).single(),
         supabase.from('hairdresser_salons').select('*, salons(*, profiles(name))').eq('hairdresser_id', id).eq('status', 'active'),
+        supabase.from('reviews').select('*, profiles!reviewer_id(name)').eq('hairdresser_id', id).order('created_at', { ascending: false }).limit(5),
       ])
 
       setHairdresser(hData as HairdresserWithProfile)
       const salonList = (hsData || []).map((hs: { salons: unknown }) => hs.salons).filter(Boolean) as (Salon & { profiles?: { name: string } })[]
       setSalons(salonList)
+      setReviews((reviewData || []) as Review[])
+      if (reviewData && reviewData.length > 0) {
+        setAvgRating(reviewData.reduce((a: number, r: Review) => a + r.rating, 0) / reviewData.length)
+      }
+
+      // お気に入り状態
+      if (user) {
+        const { data: fav } = await supabase.from('favorites')
+          .select('id').eq('consumer_id', user.id).eq('hairdresser_id', id).maybeSingle()
+        setIsFavorited(!!fav)
+      }
+
       setLoading(false)
     }
     load()
@@ -105,6 +130,17 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
 
     setAvailableSlots((data || []) as AvailableSlot[])
     setSlotsLoading(false)
+  }
+
+  const toggleFavorite = async () => {
+    if (!currentUserId) { router.push('/login'); return }
+    if (isFavorited) {
+      await supabase.from('favorites').delete()
+        .eq('consumer_id', currentUserId).eq('hairdresser_id', id)
+    } else {
+      await supabase.from('favorites').insert({ consumer_id: currentUserId, hairdresser_id: id })
+    }
+    setIsFavorited(!isFavorited)
   }
 
   const handleSelectMenu = (menu: MenuItem) => {
@@ -210,7 +246,6 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
     letterSpacing: '0.04em',
   }
 
-  // ステップ表示ヘルパー
   const StepLabel = ({ num, label, done, active }: { num: number; label: string; done: boolean; active: boolean }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
       <div style={{
@@ -245,7 +280,23 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
 
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>{hairdresser.area}</p>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: '0 0 1.5rem' }}>{hairdresser.profiles?.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>{hairdresser.profiles?.name}</h1>
+              <button
+                onClick={toggleFavorite}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', marginTop: '0.5rem', flexShrink: 0 }}
+                title={isFavorited ? 'お気に入り解除' : 'お気に入り登録'}
+              >
+                <Heart size={20} style={{ color: isFavorited ? '#c9b99a' : '#cccccc', fill: isFavorited ? '#c9b99a' : 'none', transition: 'all 0.15s' }} />
+              </button>
+            </div>
+
+            {avgRating !== null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <span style={{ color: '#c9b99a', fontSize: '0.875rem' }}>{'★'.repeat(Math.round(avgRating))}{'☆'.repeat(5 - Math.round(avgRating))}</span>
+                <span style={{ fontSize: '0.75rem', color: '#999999', fontWeight: 300 }}>{avgRating.toFixed(1)}（{reviews.length}件）</span>
+              </div>
+            )}
 
             {hairdresser.instagram_url && (
               <a href={hairdresser.instagram_url} target="_blank" rel="noopener noreferrer"
@@ -261,6 +312,21 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
         </div>
+
+        {/* ポートフォリオ */}
+        {hairdresser.portfolio_urls && hairdresser.portfolio_urls.length > 0 && (
+          <div className="mb-20" style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>PORTFOLIO</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+              {hairdresser.portfolio_urls.map((url, i) => (
+                <button key={i} type="button" onClick={() => setLightboxUrl(url)}
+                  style={{ aspectRatio: '1', background: '#f5f5f5', border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden' }}>
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.2s' }} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── STEP 1: メニュー選択 ── */}
         <div className="mb-16" style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
@@ -498,7 +564,6 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
           <div style={{ border: '1px solid #ebebeb', padding: '2rem' }}>
             <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>CONFIRM BOOKING</p>
 
-            {/* 選択内容サマリー */}
             <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', border: '1px solid #ebebeb' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
@@ -545,7 +610,40 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
             </form>
           </div>
         ) : null}
+
+        {/* レビュー一覧 */}
+        {reviews.length > 0 && (
+          <div style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem', marginTop: '3rem' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>REVIEWS</p>
+            <div style={{ border: '1px solid #ebebeb' }}>
+              {reviews.map((r, i) => (
+                <div key={r.id} className="px-6 py-5" style={{ borderBottom: i < reviews.length - 1 ? '1px solid #ebebeb' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#111111', fontWeight: 300 }}>{r.profiles?.name || 'ゲスト'}</span>
+                      <span style={{ color: '#c9b99a', fontSize: '0.8rem' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                    </div>
+                    <span style={{ fontSize: '0.65rem', color: '#cccccc', fontWeight: 300 }}>
+                      {new Date(r.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  {r.comment && <p style={{ fontSize: '0.875rem', color: '#666666', fontWeight: 300, lineHeight: 1.7 }}>{r.comment}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ポートフォリオ拡大モーダル */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, cursor: 'zoom-out', padding: '2rem' }}
+        >
+          <img src={lightboxUrl} alt="" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain' }} />
+        </div>
+      )}
     </div>
   )
 }

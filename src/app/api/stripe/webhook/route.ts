@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -26,16 +26,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
+
+  // manual capture: カード承認時（サービス完了後にキャプチャ）
+  if (event.type === 'payment_intent.amount_capturable_updated') {
+    const pi = event.data.object as Stripe.PaymentIntent
+    await supabase.from('bookings')
+      .update({ payment_status: 'authorized' })
+      .eq('payment_intent_id', pi.id)
+  }
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as Stripe.PaymentIntent
     const { bookingId, hairdresserAmount, salonAmount, hairdresserStripeId, salonStripeId } = pi.metadata
 
+    // payment_intent_idで直接検索
+    await supabase.from('bookings')
+      .update({ payment_status: 'paid' })
+      .eq('payment_intent_id', pi.id)
+
     if (bookingId) {
-      await supabase.from('bookings')
-        .update({ payment_status: 'paid' })
-        .eq('id', bookingId)
 
       // 美容師に送金
       if (hairdresserStripeId) {
@@ -61,12 +71,9 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'payment_intent.payment_failed') {
     const pi = event.data.object as Stripe.PaymentIntent
-    const { bookingId } = pi.metadata
-    if (bookingId) {
-      await supabase.from('bookings')
-        .update({ payment_status: 'unpaid' })
-        .eq('id', bookingId)
-    }
+    await supabase.from('bookings')
+      .update({ payment_status: 'unpaid' })
+      .eq('payment_intent_id', pi.id)
   }
 
   return NextResponse.json({ received: true })

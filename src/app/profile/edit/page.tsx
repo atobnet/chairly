@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus, X, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { MenuItem, HairdresserSalon, Salon } from '@/types'
 
@@ -24,6 +24,9 @@ export default function ProfileEditPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([])
+  const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
+  const portfolioInputRef = useRef<HTMLInputElement>(null)
 
   // Salons
   const [myHairdresserSalons, setMyHairdresserSalons] = useState<HairdresserSalon[]>([])
@@ -54,7 +57,13 @@ export default function ProfileEditPage() {
       ])
 
       if (profile) setName(profile.name || '')
-      if (hd) { setBio(hd.bio || ''); setInstagramUrl(hd.instagram_url || ''); setArea(hd.area || '渋谷区'); setMenus(hd.menus || []) }
+      if (hd) {
+        setBio(hd.bio || '')
+        setInstagramUrl(hd.instagram_url || '')
+        setArea(hd.area || '渋谷区')
+        setMenus(hd.menus || [])
+        setPortfolioUrls(hd.portfolio_urls || [])
+      }
       setMyHairdresserSalons((hsData || []) as HairdresserSalon[])
       setAllSalons((salonsData || []) as (Salon & { profiles?: { name: string } })[])
       setLoading(false)
@@ -81,6 +90,44 @@ export default function ProfileEditPage() {
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
     setSaving(false)
+  }
+
+  const handlePortfolioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !userId) return
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      alert('JPGまたはPNG形式の画像のみアップロードできます')
+      return
+    }
+    if (portfolioUrls.length >= 10) {
+      alert('ポートフォリオは最大10枚までです')
+      return
+    }
+
+    setUploadingPortfolio(true)
+    const path = `${userId}/${Date.now()}-${file.name}`
+    const { data, error } = await supabase.storage.from('portfolio').upload(path, file)
+    if (error) { alert('アップロードに失敗しました'); setUploadingPortfolio(false); return }
+
+    if (data) {
+      const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(path)
+      const newUrls = [...portfolioUrls, publicUrl]
+      await supabase.from('hairdressers').update({ portfolio_urls: newUrls }).eq('id', userId)
+      setPortfolioUrls(newUrls)
+    }
+    setUploadingPortfolio(false)
+    if (portfolioInputRef.current) portfolioInputRef.current.value = ''
+  }
+
+  const handlePortfolioDelete = async (url: string) => {
+    if (!userId) return
+    const newUrls = portfolioUrls.filter(u => u !== url)
+    await supabase.from('hairdressers').update({ portfolio_urls: newUrls }).eq('id', userId)
+    setPortfolioUrls(newUrls)
+    // Storageからも削除（URLからパスを抽出）
+    const path = url.split('/portfolio/')[1]
+    if (path) await supabase.storage.from('portfolio').remove([path])
   }
 
   const handleAddSalon = async (salonId: string) => {
@@ -238,6 +285,52 @@ export default function ProfileEditPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Portfolio */}
+          <div style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>PORTFOLIO</p>
+            <p style={{ fontSize: '0.75rem', color: '#999999', fontWeight: 300, marginBottom: '1rem' }}>
+              施術写真を登録できます（最大10枚、JPG/PNGのみ）
+            </p>
+
+            {portfolioUrls.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+                {portfolioUrls.map((url, i) => (
+                  <div key={i} style={{ position: 'relative', aspectRatio: '1', background: '#f5f5f5' }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={() => handlePortfolioDelete(url)}
+                      style={{ position: 'absolute', top: '0.25rem', right: '0.25rem', width: '1.25rem', height: '1.25rem', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {portfolioUrls.length < 10 && (
+              <>
+                <input
+                  ref={portfolioInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handlePortfolioUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => portfolioInputRef.current?.click()}
+                  disabled={uploadingPortfolio}
+                  style={{ width: '100%', padding: '1.25rem', border: '1px dashed #ebebeb', background: 'transparent', cursor: uploadingPortfolio ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#cccccc', fontSize: '0.75rem', fontWeight: 300, letterSpacing: '0.1em', opacity: uploadingPortfolio ? 0.5 : 1 }}
+                >
+                  {uploadingPortfolio ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  {uploadingPortfolio ? 'アップロード中...' : '写真を追加'}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Salons */}

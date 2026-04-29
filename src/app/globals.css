@@ -50,3 +50,17 @@ input, select, textarea, button {
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Leafletのz-indexをNavより下に抑える */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-map-pane svg,
+.leaflet-map-pane canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer { z-index: 1 !important; }
+.leaflet-control { z-index: 2 !important; }
+.leaflet-top, .leaflet-bottom { z-index: 2 !important; }

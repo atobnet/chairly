@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
 
   let paymentStatusUpdate: string = 'refunded'
 
-  // 決済済みの場合のみStripe返金処理
-  if (booking.payment_intent_id && booking.payment_status === 'paid') {
+  // 決済済み（authorized含む）の場合のみStripe返金処理
+  if (booking.payment_intent_id && (booking.payment_status === 'paid' || booking.payment_status === 'authorized')) {
     const stripe = getStripe()
     const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id)
     const totalAmount = pi.amount_received || pi.amount

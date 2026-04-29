@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
     .from('bookings')
     .select(`
       id, menu, consumer_id, status, payment_status, payment_intent_id,
-      hairdresser_availability(hairdresser_id),
-      salons:salon_id(stripe_account_id:profiles!salon_id(stripe_account_id))
+      hairdresser_availability(hairdresser_id)
     `)
     .eq('id', bookingId)
     .eq('consumer_id', user.id)

@@ -90,6 +90,24 @@ export interface AvailableSlot {
   hairdresser_salon_id: string
 }
 
+export interface Review {
+  id: string
+  booking_id: string
+  reviewer_id: string
+  hairdresser_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  profiles?: Profile
+}
+
+export interface Favorite {
+  id: string
+  consumer_id: string
+  hairdresser_id: string
+  created_at: string
+}
+
 export interface Booking {
   id: string
   slot_id: string | null
