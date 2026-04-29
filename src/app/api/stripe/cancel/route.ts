@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
 
-// キャンセルポリシー: 消費者キャンセルの返金率
+// キャンセルポリシー: 消費者キャンセルの返金率（JST基準）
 function calcRefundRate(bookedDate: string): number {
   const now = new Date()
-  const booked = new Date(bookedDate)
+  // bookedDateをJST午前0時として解釈（日本時間の「予約日」に合わせる）
+  const booked = new Date(`${bookedDate}T00:00:00+09:00`)
   const diffDays = Math.floor((booked.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (diffDays >= 7) return 1.0  // 全額返金
   if (diffDays >= 3) return 0.7  // 30%キャンセル料
