@@ -10,10 +10,22 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center">
           <p className="text-xs tracking-[0.4em] mb-16" style={{ color: '#cccccc' }}>TOKYO — 2025</p>
 
+          <p
+            className="leading-none mb-10"
+            style={{
+              fontSize: 'clamp(4rem, 16vw, 12rem)',
+              fontWeight: 100,
+              letterSpacing: '-0.02em',
+              color: '#111111',
+            }}
+          >
+            Chairly
+          </p>
+
           <h1
             className="leading-tight mb-10"
             style={{
-              fontSize: 'clamp(2.2rem, 7vw, 6rem)',
+              fontSize: 'clamp(1.4rem, 4vw, 3.5rem)',
               fontWeight: 100,
               letterSpacing: '-0.01em',
               color: '#111111',
@@ -198,8 +210,8 @@ const FOR_EVERYONE = [
     Icon: User,
     title: 'お気に入りの美容師が、いつでも近くに',
     desc: '好きな美容師を指名して、最寄りのサロンで施術が受けられる。美容師との関係を、場所を超えて続けられる。',
-    cta: '美容師を探す',
-    href: '/search',
+    cta: 'ゲスト登録はこちら',
+    href: '/signup',
   },
   {
     role: 'HAIRDRESSER',
