@@ -41,14 +41,14 @@ export default function HomePage() {
             <Link
               href="/search"
               className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-70"
-              style={{ background: '#111111', color: '#ffffff', minWidth: '200px' }}
+              style={{ background: '#111111', color: '#ffffff', width: '240px' }}
             >
               美容師を探す →
             </Link>
             <Link
               href="/signup?role=hairdresser"
               className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-50"
-              style={{ border: '1px solid #ebebeb', color: '#999999', minWidth: '200px' }}
+              style={{ border: '1px solid #ebebeb', color: '#999999', width: '240px' }}
             >
               美容師の方はこちら →
             </Link>
