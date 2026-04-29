@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Check, Scissors, MapPin, ShieldCheck, CreditCard, User, Building2 } from 'lucide-react'
 
 export default function HomePage() {
@@ -8,17 +9,16 @@ export default function HomePage() {
       {/* ① ヒーロー */}
       <section className="min-h-[100svh] flex flex-col justify-between px-8 pt-24 pb-16" style={{ background: '#ffffff' }}>
         <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center">
-          <p
-            className="leading-none mb-10"
-            style={{
-              fontSize: 'clamp(4rem, 16vw, 12rem)',
-              fontWeight: 100,
-              letterSpacing: '-0.02em',
-              color: '#111111',
-            }}
-          >
-            Chairly
-          </p>
+          <div className="mb-10">
+            <Image
+              src="/chairly-logo.png"
+              alt="Chairly"
+              width={400}
+              height={120}
+              priority
+              className="w-[240px] sm:w-[420px] md:w-[600px] h-auto"
+            />
+          </div>
 
           <h1
             className="leading-tight mb-10"
