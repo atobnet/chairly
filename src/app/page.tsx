@@ -9,21 +9,21 @@ export default function HomePage() {
       {/* ① ヒーロー */}
       <section className="min-h-[100svh] flex flex-col justify-between px-8 pt-24 pb-16" style={{ background: '#ffffff' }}>
         <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center">
-          <div className="mb-10">
+          <div className="mb-6">
             <Image
               src="/chairly-logo.png"
               alt="Chairly"
               width={400}
               height={120}
               priority
-              className="w-[240px] sm:w-[420px] md:w-[600px] h-auto"
+              className="w-[180px] sm:w-[300px] md:w-[420px] h-auto"
             />
           </div>
 
           <h1
-            className="leading-tight mb-10"
+            className="leading-tight mb-5"
             style={{
-              fontSize: 'clamp(1.4rem, 4vw, 3.5rem)',
+              fontSize: 'clamp(1.2rem, 3.5vw, 3rem)',
               fontWeight: 100,
               letterSpacing: '-0.01em',
               color: '#111111',
@@ -33,7 +33,7 @@ export default function HomePage() {
             あなたの近くで。
           </h1>
 
-          <p className="mb-16" style={{ color: '#999999', fontWeight: 300, lineHeight: 2, fontSize: '13px', letterSpacing: '0.06em', maxWidth: '36rem' }}>
+          <p className="mb-10" style={{ color: '#999999', fontWeight: 300, lineHeight: 2, fontSize: '13px', letterSpacing: '0.06em', maxWidth: '36rem' }}>
             フリーランス美容師があなたの街のサロンに来る、<br />
             新しい予約のかたち。
           </p>
