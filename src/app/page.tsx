@@ -8,7 +8,7 @@ export default function HomePage() {
 
       {/* ① ヒーロー */}
       <section className="min-h-[100svh] flex flex-col justify-between px-8 pt-24 pb-16" style={{ background: '#ffffff' }}>
-        <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center">
+        <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col justify-center items-center text-center">
           <div className="mb-6">
             <Image
               src="/chairly-logo.png"
@@ -16,7 +16,7 @@ export default function HomePage() {
               width={400}
               height={120}
               priority
-              className="w-[180px] sm:w-[300px] md:w-[420px] h-auto"
+              className="w-[180px] sm:w-[280px] md:w-[400px] h-auto"
             />
           </div>
 
@@ -33,23 +33,22 @@ export default function HomePage() {
             あなたの近くで。
           </h1>
 
-          <p className="mb-10" style={{ color: '#999999', fontWeight: 300, lineHeight: 2, fontSize: '13px', letterSpacing: '0.06em', maxWidth: '36rem' }}>
-            フリーランス美容師があなたの街のサロンに来る、<br />
-            新しい予約のかたち。
+          <p className="mb-8" style={{ fontSize: '14px', fontWeight: 300, letterSpacing: '0.08em', color: '#444444' }}>
+            Your Chair, Anywhere.
           </p>
 
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap justify-center gap-6">
             <Link
               href="/search"
-              className="inline-block text-xs tracking-[0.25em] px-8 py-3 transition-opacity hover:opacity-70"
-              style={{ background: '#111111', color: '#ffffff' }}
+              className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-70"
+              style={{ background: '#111111', color: '#ffffff', minWidth: '200px' }}
             >
               美容師を探す →
             </Link>
             <Link
               href="/signup?role=hairdresser"
-              className="inline-block text-xs tracking-[0.25em] px-8 py-3 transition-opacity hover:opacity-50"
-              style={{ border: '1px solid #ebebeb', color: '#999999' }}
+              className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-50"
+              style={{ border: '1px solid #ebebeb', color: '#999999', minWidth: '200px' }}
             >
               美容師の方はこちら →
             </Link>
@@ -154,15 +153,15 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-6">
             <Link
               href="/search"
-              className="inline-block text-xs tracking-[0.25em] px-8 py-3 transition-opacity hover:opacity-70"
-              style={{ background: '#f8fafc', color: '#0F172A' }}
+              className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-70"
+              style={{ background: '#f8fafc', color: '#0F172A', minWidth: '220px' }}
             >
               美容師を探す →
             </Link>
             <Link
               href="/signup?role=hairdresser"
-              className="inline-block text-xs tracking-[0.25em] px-8 py-3 transition-opacity hover:opacity-50"
-              style={{ border: '1px solid #334155', color: '#94a3b8' }}
+              className="inline-block text-xs tracking-[0.25em] px-8 py-3 text-center transition-opacity hover:opacity-50"
+              style={{ border: '1px solid #334155', color: '#94a3b8', minWidth: '220px' }}
             >
               美容師として登録する →
             </Link>

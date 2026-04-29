@@ -56,7 +56,7 @@ function SignupForm() {
   }
 
   const roles: { value: UserRole; label: string; en: string }[] = [
-    { value: 'consumer', label: '消費者', en: 'Consumer' },
+    { value: 'consumer', label: 'ゲスト', en: 'Guest' },
     { value: 'hairdresser', label: '美容師', en: 'Hairdresser' },
     { value: 'salon', label: 'サロン', en: 'Salon' },
   ]
@@ -72,7 +72,7 @@ function SignupForm() {
           </h2>
           <p className="mt-6 text-xs tracking-widest" style={{ color: '#555555', fontWeight: 300 }}>FREE TO START</p>
         </div>
-        <p className="text-xs tracking-widest" style={{ color: '#333333' }}>© 2025 CHAIRLY</p>
+        <p className="text-xs tracking-widest" style={{ color: '#333333' }}>© 2026 CHAIRLY</p>
       </div>
 
       {/* Right: form */}
