@@ -35,6 +35,19 @@ function getWeekDates(offset = 0) {
   })
 }
 
+// JSTの日付文字列を返す（YYYY-MM-DD）
+function toJSTDateString(date: Date): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
+}
+
+// 現在時刻(JST) + 2時間より前のスロットは選択不可
+function isSlotDisabled(dateStr: string, time: string): boolean {
+  const now = new Date()
+  const cutoff = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  const slotJST = new Date(`${dateStr}T${time}:00+09:00`)
+  return slotJST <= cutoff
+}
+
 function generateTimeSlots(slot: AvailableSlot, durationMinutes: number): string[] {
   const slots: string[] = []
   const [sh, sm] = slot.available_from.slice(0, 5).split(':').map(Number)
@@ -211,7 +224,7 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   }
 
   const getSlotsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = toJSTDateString(date)
     return availableSlots.filter(s => s.date === dateStr)
   }
 
@@ -516,26 +529,34 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
                 <div className="grid grid-cols-7">
                   {dates.map((date, i) => {
                     const daySlots = getSlotsForDate(date)
+                    const dateStr = toJSTDateString(date)
                     const timeSlots = daySlots.flatMap(slot =>
                       generateTimeSlots(slot, duration).map(t => ({ time: t, slot }))
                     )
                     return (
                       <div key={i} style={{ minHeight: '8rem', padding: '0.375rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderRight: i < 6 ? '1px solid #ebebeb' : 'none' }}>
-                        {timeSlots.map(({ time, slot }) => (
-                          <button
-                            key={`${slot.hairdresser_availability_id}-${time}`}
-                            onClick={() => handleSelectTimeSlot(slot, time)}
-                            style={{
-                              width: '100%', padding: '0.25rem', fontSize: '0.7rem', textAlign: 'center',
-                              border: selectedSlot === slot && selectedTime === time ? '1px solid #111111' : '1px solid #ebebeb',
-                              background: selectedSlot === slot && selectedTime === time ? '#111111' : 'transparent',
-                              color: selectedSlot === slot && selectedTime === time ? '#ffffff' : '#999999',
-                              cursor: 'pointer', fontWeight: 300,
-                            }}
-                          >
-                            {time}
-                          </button>
-                        ))}
+                        {timeSlots.map(({ time, slot }) => {
+                          const disabled = isSlotDisabled(dateStr, time)
+                          const isSelected = selectedSlot === slot && selectedTime === time
+                          return (
+                            <button
+                              key={`${slot.hairdresser_availability_id}-${time}`}
+                              onClick={() => !disabled && handleSelectTimeSlot(slot, time)}
+                              disabled={disabled}
+                              style={{
+                                width: '100%', padding: '0.25rem', fontSize: '0.7rem', textAlign: 'center',
+                                border: isSelected ? '1px solid #111111' : '1px solid #ebebeb',
+                                background: isSelected ? '#111111' : 'transparent',
+                                color: disabled ? '#dddddd' : isSelected ? '#ffffff' : '#999999',
+                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                fontWeight: 300,
+                                opacity: disabled ? 0.45 : 1,
+                              }}
+                            >
+                              {time}
+                            </button>
+                          )
+                        })}
                       </div>
                     )
                   })}
