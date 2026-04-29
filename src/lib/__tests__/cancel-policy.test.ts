@@ -10,27 +10,27 @@ const BASE_NOW = new Date('2024-11-15T03:00:00Z') // JST: 2024-11-15 12:00
 describe('calcRefundRate', () => {
 
   describe('基本的な返金率', () => {
-    it('当日 (diffDays=0) は 0%', () => {
-      expect(calcRefundRate('2024-11-15', BASE_NOW)).toBe(0.0)
+    it('当日 (diffDays=0) は 50%', () => {
+      expect(calcRefundRate('2024-11-15', BASE_NOW)).toBe(0.5)
     })
 
-    it('1日前 (diffDays=1) は 50%', () => {
-      expect(calcRefundRate('2024-11-16', BASE_NOW)).toBe(0.5)
+    it('1日前 (diffDays=1) は 70%', () => {
+      expect(calcRefundRate('2024-11-16', BASE_NOW)).toBe(0.7)
     })
 
-    it('2日前 (diffDays=2) は 50% [境界値]', () => {
-      expect(calcRefundRate('2024-11-17', BASE_NOW)).toBe(0.5)
+    it('2日前 (diffDays=2) は 70% [境界値]', () => {
+      expect(calcRefundRate('2024-11-17', BASE_NOW)).toBe(0.7)
     })
 
-    it('3日前 (diffDays=3) は 70% [境界値]', () => {
-      expect(calcRefundRate('2024-11-18', BASE_NOW)).toBe(0.7)
+    it('3日前 (diffDays=3) は 100% [境界値]', () => {
+      expect(calcRefundRate('2024-11-18', BASE_NOW)).toBe(1.0)
     })
 
-    it('6日前 (diffDays=6) は 70% [境界値]', () => {
-      expect(calcRefundRate('2024-11-21', BASE_NOW)).toBe(0.7)
+    it('6日前 (diffDays=6) は 100%', () => {
+      expect(calcRefundRate('2024-11-21', BASE_NOW)).toBe(1.0)
     })
 
-    it('7日前 (diffDays=7) は 100% [境界値]', () => {
+    it('7日前 (diffDays=7) は 100%', () => {
       expect(calcRefundRate('2024-11-22', BASE_NOW)).toBe(1.0)
     })
 
@@ -54,27 +54,27 @@ describe('calcRefundRate', () => {
      * bookedDate='2024-11-15' は JST基準で「当日」→ 0%
      * もしUTC基準で計算すると '2024-11-15' - '2024-11-14' = 1日 → 50% になってしまう（バグ）
      */
-    it('JSTで日付が変わった直後(00:01)は当日扱い(0%)', () => {
+    it('JSTで日付が変わった直後(00:01)は当日扱い(50%)', () => {
       const nowJustAfterMidnightJST = new Date('2024-11-14T15:01:00Z') // JST: 2024-11-15 00:01
-      expect(calcRefundRate('2024-11-15', nowJustAfterMidnightJST)).toBe(0.0)
+      expect(calcRefundRate('2024-11-15', nowJustAfterMidnightJST)).toBe(0.5)
     })
 
     /**
-     * JSTで前日23:59:00 の場合、翌日の予約は「前日キャンセル」= 50%
+     * JSTで前日23:59:00 の場合、翌日の予約は「前日キャンセル」= 70%
      * UTC: 2024-11-14T14:59:00Z = JST: 2024-11-14 23:59:00
      */
-    it('JSTで前日23:59は翌日予約に対して50%返金', () => {
+    it('JSTで前日23:59は翌日予約に対して70%返金', () => {
       const nowBeforeMidnightJST = new Date('2024-11-14T14:59:00Z') // JST: 2024-11-14 23:59
-      expect(calcRefundRate('2024-11-15', nowBeforeMidnightJST)).toBe(0.5)
+      expect(calcRefundRate('2024-11-15', nowBeforeMidnightJST)).toBe(0.7)
     })
 
     /**
      * JSTで当日0:00ちょうど = UTC前日15:00:00
-     * bookedDate=当日 は 0%
+     * bookedDate=当日 は 50%
      */
-    it('JSTで当日0:00ちょうどは当日扱い(0%)', () => {
+    it('JSTで当日0:00ちょうどは当日扱い(50%)', () => {
       const nowMidnightJST = new Date('2024-11-14T15:00:00Z') // JST: 2024-11-15 00:00
-      expect(calcRefundRate('2024-11-15', nowMidnightJST)).toBe(0.0)
+      expect(calcRefundRate('2024-11-15', nowMidnightJST)).toBe(0.5)
     })
 
     /**

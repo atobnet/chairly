@@ -242,7 +242,7 @@ const WHY_CHAIRLY = [
   {
     Icon: ShieldCheck,
     title: '安心のキャンセルポリシー',
-    desc: '7日前までは全額返金。急なキャンセルも対応ポリシーを明示。',
+    desc: '3日前までは全額返金。前日30%・当日50%のキャンセル料。ポリシーを明示。',
   },
   {
     Icon: CreditCard,

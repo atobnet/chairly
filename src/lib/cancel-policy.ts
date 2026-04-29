@@ -1,5 +1,10 @@
 /**
- * キャンセルポリシー: 消費者キャンセルの返金率（JST カレンダー日付で比較）
+ * キャンセルポリシー: ゲストキャンセルの返金率（JST カレンダー日付で比較）
+ *
+ * 3日以上前: 全額返金
+ * 前日（1〜2日前）: 70%返金（30%キャンセル料）
+ * 当日: 50%返金（50%キャンセル料）
+ * 過去: 返金なし
  *
  * @param bookedDate - 予約日 (YYYY-MM-DD)
  * @param now        - テスト時に注入する現在時刻（省略時は new Date()）
@@ -18,8 +23,8 @@ export function calcRefundRate(bookedDate: string, now?: Date): number {
 
   const diffDays = Math.round((bookedDay.getTime() - nowDay.getTime()) / (1000 * 60 * 60 * 24))
 
-  if (diffDays >= 7) return 1.0  // 全額返金
-  if (diffDays >= 3) return 0.7  // 30%キャンセル料
-  if (diffDays >= 1) return 0.5  // 50%キャンセル料
-  return 0.0                      // 当日・過去：返金なし
+  if (diffDays >= 3) return 1.0  // 3日以上前：全額返金
+  if (diffDays >= 1) return 0.7  // 前日（1〜2日前）：70%返金
+  if (diffDays === 0) return 0.5 // 当日：50%返金
+  return 0.0                      // 過去：返金なし
 }
