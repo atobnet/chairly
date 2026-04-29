@@ -72,7 +72,7 @@ export default function HomePage() {
           <div className="grid sm:grid-cols-3 gap-px" style={{ background: '#ebebeb' }}>
             {HOW_IT_WORKS.map((step) => (
               <div key={step.step} className="px-8 py-12" style={{ background: '#fafafa' }}>
-                <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#dddddd' }}>{step.step}</p>
+                <p className="text-xs tracking-[0.3em] mb-6" style={{ color: '#aaaaaa' }}>{step.step}</p>
                 <h3 className="mb-4" style={{ fontSize: '1rem', fontWeight: 300, color: '#111111', letterSpacing: '0.04em' }}>{step.title}</h3>
                 <p className="text-xs leading-loose" style={{ color: '#999999' }}>{step.desc}</p>
               </div>
