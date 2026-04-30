@@ -61,6 +61,8 @@ export default function BookingsPage() {
   const [reviewBooking, setReviewBooking] = useState<BookingWithDetails | null>(null)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
+  const [reviewMenuName, setReviewMenuName] = useState('')
+  const [visitCount, setVisitCount] = useState<'first' | 'repeat'>('first')
   const [submittingReview, setSubmittingReview] = useState(false)
   const supabase = createClient()
   const searchParams = useSearchParams()
@@ -90,7 +92,6 @@ export default function BookingsPage() {
       profileMap = Object.fromEntries((profiles || []).map((p: { id: string; name: string }) => [p.id, p.name]))
     }
 
-    // レビュー済み予約IDを取得
     const bookingIds = (bookingData || []).map((b: { id: string }) => b.id)
     let reviewedBookingIds = new Set<string>()
     if (bookingIds.length > 0) {
@@ -145,6 +146,8 @@ export default function BookingsPage() {
       hairdresser_id: reviewBooking._hairdresserId,
       rating,
       comment: comment.trim() || null,
+      menu_name: reviewMenuName.trim() || null,
+      visit_count: visitCount,
     })
 
     if (!error) {
@@ -152,8 +155,18 @@ export default function BookingsPage() {
       setReviewBooking(null)
       setRating(5)
       setComment('')
+      setReviewMenuName('')
+      setVisitCount('first')
     }
     setSubmittingReview(false)
+  }
+
+  const openReview = (b: BookingWithDetails) => {
+    setReviewBooking(b)
+    setRating(5)
+    setComment('')
+    setReviewMenuName(b.menu || '')
+    setVisitCount('first')
   }
 
   const getBookingDate = (b: BookingWithDetails): string => {
@@ -191,6 +204,19 @@ export default function BookingsPage() {
     pending: '確認待ち',
     confirmed: '確定',
     cancelled: 'キャンセル',
+  }
+
+  const underlineInput: React.CSSProperties = {
+    width: '100%',
+    padding: '0.5rem 0',
+    fontSize: '0.875rem',
+    border: 'none',
+    borderBottom: '1px solid #ebebeb',
+    outline: 'none',
+    background: 'transparent',
+    color: '#111111',
+    fontWeight: 300,
+    letterSpacing: '0.04em',
   }
 
   if (loading) return (
@@ -263,7 +289,7 @@ export default function BookingsPage() {
                         )}
                         {canReview(b) && (
                           <button
-                            onClick={() => { setReviewBooking(b); setRating(5); setComment('') }}
+                            onClick={() => openReview(b)}
                             style={{ fontSize: '0.7rem', color: '#c9b99a', fontWeight: 300, background: 'none', border: 'none', borderBottom: '1px solid #c9b99a', padding: '0 0 1px 0', cursor: 'pointer', letterSpacing: '0.04em' }}
                           >
                             レビューを書く
@@ -297,7 +323,7 @@ export default function BookingsPage() {
                       </div>
                       {canReview(b) && (
                         <button
-                          onClick={() => { setReviewBooking(b); setRating(5); setComment('') }}
+                          onClick={() => openReview(b)}
                           style={{ fontSize: '0.7rem', color: '#c9b99a', fontWeight: 300, background: 'none', border: 'none', borderBottom: '1px solid #c9b99a', padding: '0 0 1px 0', cursor: 'pointer', letterSpacing: '0.04em', marginTop: '0.5rem' }}
                         >
                           レビューを書く
@@ -318,7 +344,7 @@ export default function BookingsPage() {
       {/* レビューモーダル */}
       {reviewBooking && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', width: '100%', maxWidth: '28rem', padding: '2rem' }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '28rem', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', fontWeight: 300 }}>REVIEW</p>
               <button onClick={() => setReviewBooking(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cccccc' }}>
@@ -333,6 +359,36 @@ export default function BookingsPage() {
               <StarRating value={rating} onChange={setRating} />
             </div>
 
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>施術メニュー（任意）</p>
+              <input
+                type="text"
+                value={reviewMenuName}
+                onChange={e => setReviewMenuName(e.target.value)}
+                placeholder="例: カット・カラー"
+                style={underlineInput}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>来店回数</p>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                {(['first', 'repeat'] as const).map(v => (
+                  <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 300, color: visitCount === v ? '#111111' : '#999999' }}>
+                    <input
+                      type="radio"
+                      name="visitCount"
+                      value={v}
+                      checked={visitCount === v}
+                      onChange={() => setVisitCount(v)}
+                      style={{ accentColor: '#111111' }}
+                    />
+                    {v === 'first' ? '初回' : '2回目以降'}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div style={{ marginBottom: '1.5rem' }}>
               <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>COMMENT（任意）</p>
               <textarea
@@ -340,7 +396,7 @@ export default function BookingsPage() {
                 onChange={e => setComment(e.target.value)}
                 rows={4}
                 placeholder="施術の感想をお聞かせください"
-                style={{ width: '100%', padding: '0.5rem 0', fontSize: '0.875rem', border: 'none', borderBottom: '1px solid #ebebeb', outline: 'none', background: 'transparent', color: '#111111', fontWeight: 300, letterSpacing: '0.04em', resize: 'none' }}
+                style={{ ...underlineInput, resize: 'none' }}
               />
             </div>
 

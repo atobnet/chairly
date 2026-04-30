@@ -8,6 +8,7 @@ import type { MenuItem, HairdresserSalon, Salon } from '@/types'
 
 const AREAS = ['渋谷区', '新宿区', '港区', '中央区', '千代田区', '世田谷区', '目黒区', '品川区', '豊島区', '文京区', '台東区', '墨田区', '江東区', '葛飾区', '足立区', '杉並区', '中野区']
 const MENU_CATEGORIES = ['組み合わせメニュー', 'カット', 'カラー', 'パーマ', '縮毛矯正', 'その他']
+const SPECIALTY_TAGS = ['縮毛矯正', '髪質改善', 'カラー', 'ハイライト', 'パーマ', 'ヘアセット', 'くせ毛', 'ショート', 'ロング', 'バージン毛', 'ダメージケア', 'メンズカット', '白髪染め', 'ブリーチ', 'トリートメント']
 
 export default function ProfileEditPage() {
   const [name, setName] = useState('')
@@ -20,6 +21,7 @@ export default function ProfileEditPage() {
   const [menuDuration, setMenuDuration] = useState(60)
   const [menuCategory, setMenuCategory] = useState('カット')
   const [menuDescription, setMenuDescription] = useState('')
+  const [specialtyTags, setSpecialtyTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -28,7 +30,6 @@ export default function ProfileEditPage() {
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
   const portfolioInputRef = useRef<HTMLInputElement>(null)
 
-  // Salons
   const [myHairdresserSalons, setMyHairdresserSalons] = useState<HairdresserSalon[]>([])
   const [allSalons, setAllSalons] = useState<(Salon & { profiles?: { name: string } })[]>([])
   const [salonFilter, setSalonFilter] = useState('')
@@ -63,6 +64,7 @@ export default function ProfileEditPage() {
         setArea(hd.area || '渋谷区')
         setMenus(hd.menus || [])
         setPortfolioUrls(hd.portfolio_urls || [])
+        setSpecialtyTags(hd.specialty_tags || [])
       }
       setMyHairdresserSalons((hsData || []) as HairdresserSalon[])
       setAllSalons((salonsData || []) as (Salon & { profiles?: { name: string } })[])
@@ -70,6 +72,14 @@ export default function ProfileEditPage() {
     }
     load()
   }, [])
+
+  const toggleTag = (tag: string) => {
+    setSpecialtyTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : prev.length < 10 ? [...prev, tag] : prev
+    )
+  }
 
   const addMenu = () => {
     if (!menuName.trim()) return
@@ -86,7 +96,7 @@ export default function ProfileEditPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase.from('profiles').update({ name }).eq('id', user.id)
-    await supabase.from('hairdressers').upsert({ id: user.id, bio, instagram_url: instagramUrl, area, menus })
+    await supabase.from('hairdressers').upsert({ id: user.id, bio, instagram_url: instagramUrl, area, menus, specialty_tags: specialtyTags })
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
     setSaving(false)
@@ -125,7 +135,6 @@ export default function ProfileEditPage() {
     const newUrls = portfolioUrls.filter(u => u !== url)
     await supabase.from('hairdressers').update({ portfolio_urls: newUrls }).eq('id', userId)
     setPortfolioUrls(newUrls)
-    // Storageからも削除（URLからパスを抽出）
     const path = url.split('/portfolio/')[1]
     if (path) await supabase.storage.from('portfolio').remove([path])
   }
@@ -222,6 +231,40 @@ export default function ProfileEditPage() {
             </div>
           </div>
 
+          {/* Specialty Tags */}
+          <div style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.5rem', fontWeight: 300 }}>SPECIALTY TAGS</p>
+            <p style={{ fontSize: '0.75rem', color: '#999999', fontWeight: 300, marginBottom: '1rem' }}>
+              得意分野を選択（最大10個）　{specialtyTags.length}/10
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {SPECIALTY_TAGS.map(tag => {
+                const selected = specialtyTags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    style={{
+                      padding: '0.375rem 0.875rem',
+                      fontSize: '0.75rem',
+                      letterSpacing: '0.04em',
+                      border: selected ? '1px solid #111111' : '1px solid #ebebeb',
+                      background: selected ? '#111111' : 'transparent',
+                      color: selected ? '#ffffff' : '#999999',
+                      cursor: !selected && specialtyTags.length >= 10 ? 'not-allowed' : 'pointer',
+                      fontWeight: 300,
+                      transition: 'all 0.15s',
+                      opacity: !selected && specialtyTags.length >= 10 ? 0.4 : 1,
+                    }}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Menus */}
           <div style={{ borderTop: '1px solid #ebebeb', paddingTop: '3rem' }}>
             <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>MENU & PRICE</p>
@@ -253,7 +296,6 @@ export default function ProfileEditPage() {
               </div>
             )}
 
-            {/* 新規メニュー追加フォーム */}
             <div style={{ border: '1px solid #ebebeb', padding: '1rem' }}>
               <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>+ メニューを追加</p>
               <div className="flex gap-3" style={{ marginBottom: '0.75rem' }}>
@@ -313,13 +355,7 @@ export default function ProfileEditPage() {
 
             {portfolioUrls.length < 10 && (
               <>
-                <input
-                  ref={portfolioInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={handlePortfolioUpload}
-                  style={{ display: 'none' }}
-                />
+                <input ref={portfolioInputRef} type="file" accept="image/jpeg,image/png" onChange={handlePortfolioUpload} style={{ display: 'none' }} />
                 <button
                   type="button"
                   onClick={() => portfolioInputRef.current?.click()}
@@ -362,7 +398,6 @@ export default function ProfileEditPage() {
               </div>
             )}
 
-            {/* Add salon */}
             <div style={{ border: '1px solid #ebebeb', padding: '1rem' }}>
               <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>+ サロンを追加</p>
               <div className="flex gap-2 mb-3">

@@ -83,7 +83,7 @@ export default function DashboardPage() {
   const quickLinks = role === 'consumer'
     ? [{ href: '/search', label: '美容師を探す', sub: 'FIND ARTISTS' }, { href: '/bookings', label: '予約一覧', sub: 'MY BOOKINGS' }]
     : role === 'hairdresser'
-    ? [{ href: '/schedule', label: 'スケジュール', sub: 'SCHEDULE' }, { href: '/requests', label: 'リクエスト', sub: 'REQUESTS' }, { href: '/profile/edit', label: 'プロフィール', sub: 'PROFILE' }]
+    ? [{ href: '/schedule', label: 'スケジュール', sub: 'SCHEDULE' }, { href: '/requests', label: 'リクエスト', sub: 'REQUESTS' }, { href: '/profile/edit', label: 'プロフィール', sub: 'PROFILE' }, { href: '/hairdresser/stamp-card', label: 'スタンプカード', sub: 'STAMP CARD' }]
     : [{ href: '/slots', label: '空き枠管理', sub: 'SLOTS' }, { href: '/space/edit', label: 'スペース編集', sub: 'SPACE' }]
 
   return (

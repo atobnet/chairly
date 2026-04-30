@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import StampCardSection from './StampCardSection'
 
 interface Coupon {
   id: string
@@ -8,9 +9,28 @@ interface Coupon {
   expires_at: string
   used_at: string | null
   created_at: string
+  reward_description?: string | null
+  funding_type?: string | null
+}
+
+interface GuestStampWithCard {
+  id: string
+  hairdresser_id: string
+  stamp_count: number
+  total_stamps: number
+  stamp_cards: {
+    stamps_required: number
+    reward_description: string
+    card_design: string
+    is_active: boolean
+  } | null
+  hairdressers: {
+    profiles: { name: string } | null
+  } | null
 }
 
 function formatDiscount(c: Coupon) {
+  if (c.reward_description) return c.reward_description
   return c.discount_type === 'amount'
     ? `¥${c.discount_value.toLocaleString()}割引`
     : `${c.discount_value}%割引`
@@ -29,13 +49,22 @@ export default async function MyPage() {
 
   const now = new Date().toISOString()
 
-  const { data: allCoupons } = await supabase
-    .from('coupons')
-    .select('id, discount_type, discount_value, expires_at, used_at, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const [{ data: allCoupons }, { data: stampData }] = await Promise.all([
+    supabase
+      .from('coupons')
+      .select('id, discount_type, discount_value, expires_at, used_at, created_at, reward_description, funding_type')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('guest_stamps')
+      .select('id, hairdresser_id, stamp_count, total_stamps, stamp_cards(stamps_required, reward_description, card_design, is_active), hairdressers!guest_stamps_hairdresser_id_fkey(profiles(name))')
+      .eq('guest_id', user.id)
+      .order('updated_at', { ascending: false }),
+  ])
 
   const coupons = (allCoupons as Coupon[]) || []
+  const stamps = (stampData as unknown as GuestStampWithCard[]) || []
+  const activeStamps = stamps.filter(s => s.stamp_cards?.is_active)
 
   const valid = coupons.filter(c => !c.used_at && c.expires_at > now)
   const used = coupons.filter(c => !!c.used_at)
@@ -47,10 +76,18 @@ export default async function MyPage() {
         <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>MY PAGE</p>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 100, marginBottom: '3rem' }}>マイページ</h1>
 
+        {/* スタンプカード */}
+        {activeStamps.length > 0 && (
+          <section className="mb-12">
+            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111111', marginBottom: '1.5rem', letterSpacing: '0.05em' }}>スタンプカード</p>
+            <StampCardSection stamps={activeStamps} />
+          </section>
+        )}
+
+        {/* クーポン */}
         <section className="mb-12">
           <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111111', marginBottom: '1.5rem', letterSpacing: '0.05em' }}>保有クーポン</p>
 
-          {/* 有効 */}
           <div className="mb-8">
             <span style={labelStyle}>VALID</span>
             {valid.length === 0 ? (
@@ -58,11 +95,8 @@ export default async function MyPage() {
             ) : (
               <div style={{ border: '1px solid #ebebeb' }}>
                 {valid.map((c, i) => (
-                  <div
-                    key={c.id}
-                    className="px-5 py-4 flex items-center justify-between"
-                    style={{ borderBottom: i < valid.length - 1 ? '1px solid #ebebeb' : 'none' }}
-                  >
+                  <div key={c.id} className="px-5 py-4 flex items-center justify-between"
+                    style={{ borderBottom: i < valid.length - 1 ? '1px solid #ebebeb' : 'none' }}>
                     <div>
                       <p style={{ fontSize: '1rem', fontWeight: 600, color: '#111111', marginBottom: '0.25rem' }}>
                         {formatDiscount(c)}
@@ -78,17 +112,13 @@ export default async function MyPage() {
             )}
           </div>
 
-          {/* 使用済み */}
           {used.length > 0 && (
             <div className="mb-8">
               <span style={labelStyle}>USED</span>
               <div style={{ border: '1px solid #ebebeb', opacity: 0.5 }}>
                 {used.map((c, i) => (
-                  <div
-                    key={c.id}
-                    className="px-5 py-4 flex items-center justify-between"
-                    style={{ borderBottom: i < used.length - 1 ? '1px solid #ebebeb' : 'none' }}
-                  >
+                  <div key={c.id} className="px-5 py-4 flex items-center justify-between"
+                    style={{ borderBottom: i < used.length - 1 ? '1px solid #ebebeb' : 'none' }}>
                     <div>
                       <p style={{ fontSize: '0.95rem', color: '#999999', marginBottom: '0.25rem' }}>{formatDiscount(c)}</p>
                       <p style={{ fontSize: '0.7rem', color: '#cccccc' }}>使用日: {formatDate(c.used_at!)}</p>
@@ -100,17 +130,13 @@ export default async function MyPage() {
             </div>
           )}
 
-          {/* 期限切れ */}
           {expired.length > 0 && (
             <div>
               <span style={labelStyle}>EXPIRED</span>
               <div style={{ border: '1px solid #ebebeb', opacity: 0.4 }}>
                 {expired.map((c, i) => (
-                  <div
-                    key={c.id}
-                    className="px-5 py-4 flex items-center justify-between"
-                    style={{ borderBottom: i < expired.length - 1 ? '1px solid #ebebeb' : 'none' }}
-                  >
+                  <div key={c.id} className="px-5 py-4 flex items-center justify-between"
+                    style={{ borderBottom: i < expired.length - 1 ? '1px solid #ebebeb' : 'none' }}>
                     <div>
                       <p style={{ fontSize: '0.95rem', color: '#999999', marginBottom: '0.25rem' }}>{formatDiscount(c)}</p>
                       <p style={{ fontSize: '0.7rem', color: '#cccccc' }}>期限: {formatDate(c.expires_at)}</p>
