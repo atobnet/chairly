@@ -11,6 +11,7 @@ export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const [role, setRole] = useState<UserRole | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -20,8 +21,11 @@ export default function Nav() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
       setLoggedIn(true)
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      if (data) setRole(data.role as UserRole)
+      const { data } = await supabase.from('profiles').select('role, is_admin').eq('id', user.id).single()
+      if (data) {
+        setRole(data.role as UserRole)
+        setIsAdmin(!!data.is_admin)
+      }
     })
   }, [pathname])
 
@@ -81,6 +85,22 @@ export default function Nav() {
               {l.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="text-xs tracking-widest"
+              style={{
+                color: pathname.startsWith('/admin') ? '#ffffff' : '#111111',
+                fontWeight: 300,
+                background: pathname.startsWith('/admin') ? '#111111' : 'transparent',
+                border: '1px solid #111111',
+                padding: '3px 10px',
+                letterSpacing: '0.2em',
+              }}
+            >
+              ADMIN
+            </Link>
+          )}
           {role ? (
             <button
               onClick={handleSignOut}
@@ -113,6 +133,9 @@ export default function Nav() {
               {l.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setOpen(false)} className="text-xs tracking-widest" style={{ color: '#111111', fontWeight: 600 }}>ADMIN</Link>
+          )}
           {role ? (
             <button onClick={handleSignOut} className="text-xs tracking-widest text-left" style={{ color: '#cccccc' }}>SIGN OUT</button>
           ) : (
