@@ -50,6 +50,44 @@ export async function POST(req: NextRequest) {
 
     if (bookingId) {
 
+      // クーポン自動発行（初回決済完了時）
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('consumer_id')
+        .eq('id', bookingId)
+        .single()
+
+      if (booking?.consumer_id) {
+        // 今回の予約を除く過去の決済済み予約数
+        const { count: paidCount } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('consumer_id', booking.consumer_id)
+          .eq('payment_status', 'paid')
+          .neq('id', bookingId)
+
+        if (paidCount === 0) {
+          // 初回決済 → 初回クーポン・2回目クーポンを発行
+          const { data: couponSettings } = await supabase
+            .from('coupon_settings')
+            .select('*')
+            .eq('is_active', true)
+
+          if (couponSettings && couponSettings.length > 0) {
+            const now = Date.now()
+            const inserts = couponSettings.map((cs: { coupon_type: string; discount_type: string; discount_value: number; funding_type: string; expires_days: number }) => ({
+              user_id: booking.consumer_id,
+              discount_type: cs.discount_type,
+              discount_value: cs.discount_value,
+              discount_rate: cs.discount_type === 'rate' ? cs.discount_value : null,
+              funding_type: cs.funding_type,
+              expires_at: new Date(now + cs.expires_days * 24 * 60 * 60 * 1000).toISOString(),
+            }))
+            await supabase.from('coupons').insert(inserts)
+          }
+        }
+      }
+
       // 美容師に送金
       if (hairdresserStripeId) {
         await stripe.transfers.create({
