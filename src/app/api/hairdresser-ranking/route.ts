@@ -25,10 +25,14 @@ export async function GET() {
   ])
 
   // Aggregate counts by hairdresser_id (via hairdresser_availability join)
-  const countMap = (rows: { hairdresser_availability: { hairdresser_id: string } | null }[] | null) => {
+  // Supabase returns hairdresser_availability as array (one-to-many relation)
+  const countMap = (rows: { hairdresser_availability: { hairdresser_id: string }[] }[] | null) => {
     const map: Record<string, number> = {}
     for (const row of rows ?? []) {
-      const id = row.hairdresser_availability?.hairdresser_id
+      const availability = Array.isArray(row.hairdresser_availability)
+        ? row.hairdresser_availability[0]
+        : row.hairdresser_availability
+      const id = availability?.hairdresser_id
       if (id) map[id] = (map[id] ?? 0) + 1
     }
     return map
