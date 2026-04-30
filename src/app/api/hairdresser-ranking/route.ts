@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const now = new Date()
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
@@ -12,23 +12,24 @@ export async function GET() {
   const [{ data: thisMonth }, { data: prevMonth }] = await Promise.all([
     supabase
       .from('bookings')
-      .select('hairdresser_id')
+      .select('hairdresser_availability!inner(hairdresser_id)')
       .neq('status', 'cancelled')
       .gte('created_at', thisMonthStart)
       .lt('created_at', nextMonthStart),
     supabase
       .from('bookings')
-      .select('hairdresser_id')
+      .select('hairdresser_availability!inner(hairdresser_id)')
       .neq('status', 'cancelled')
       .gte('created_at', prevMonthStart)
       .lt('created_at', thisMonthStart),
   ])
 
-  // Aggregate counts by hairdresser_id
-  const countMap = (rows: { hairdresser_id: string }[] | null) => {
+  // Aggregate counts by hairdresser_id (via hairdresser_availability join)
+  const countMap = (rows: { hairdresser_availability: { hairdresser_id: string } | null }[] | null) => {
     const map: Record<string, number> = {}
     for (const row of rows ?? []) {
-      if (row.hairdresser_id) map[row.hairdresser_id] = (map[row.hairdresser_id] ?? 0) + 1
+      const id = row.hairdresser_availability?.hairdresser_id
+      if (id) map[id] = (map[id] ?? 0) + 1
     }
     return map
   }
@@ -47,12 +48,12 @@ export async function GET() {
     count,
   }))
 
-  // Trending: this month >= 5 AND +50% vs prev month
+  // Trending: this month >= 5 AND +50% vs prev month (requires prior month baseline)
   const trending = Object.entries(thisCounts)
     .filter(([id, count]) => {
       if (count < 5) return false
       const prev = prevCounts[id] ?? 0
-      if (prev === 0) return true
+      if (prev === 0) return false
       return count >= prev * 1.5
     })
     .map(([id]) => id)
