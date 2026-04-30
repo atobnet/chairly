@@ -10,7 +10,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false;
 UPDATE profiles
 SET is_admin = true
 WHERE id = (
-  SELECT id FROM auth.users WHERE email = 'keisuke@atobnet.com'
+  SELECT id FROM auth.users WHERE email = 'iwamotokeisukeiw0502@gmail.com'
 );
 
 -- 3. coupon_settings テーブル作成
