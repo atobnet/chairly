@@ -163,10 +163,25 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   const [stampCard, setStampCard] = useState<StampCard | null>(null)
   const [guestStamp, setGuestStamp] = useState<GuestStamp | null>(null)
 
+  // Ranking
+  const [myRank, setMyRank] = useState<number | null>(null)
+  const [isTrending, setIsTrending] = useState(false)
+
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => { window.scrollTo(0, 0) }, [id])
+
+  useEffect(() => {
+    fetch('/api/hairdresser-ranking')
+      .then(r => r.json())
+      .then((data: { rankings: { hairdresser_id: string; rank: number }[]; trending: string[] }) => {
+        const entry = data.rankings.find(r => r.hairdresser_id === id)
+        setMyRank(entry?.rank ?? null)
+        setIsTrending(data.trending.includes(id))
+      })
+      .catch(() => {})
+  }, [id])
 
   useEffect(() => {
     const load = async () => {
@@ -419,7 +434,21 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <p style={{ fontSize: '0.65rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '0.75rem', fontWeight: 300 }}>{hairdresser.area}</p>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>{hairdresser.profiles?.name}</h1>
+              <div>
+                <h1 style={{ fontSize: '2.25rem', fontWeight: 100, color: '#111111', letterSpacing: '0.04em', margin: 0 }}>{hairdresser.profiles?.name}</h1>
+                {(myRank !== null || isTrending) && (() => {
+                  let bg = '#B8962E'
+                  let label = 'RANKING #1'
+                  if (myRank === 2) { bg = '#8A8A8A'; label = 'RANKING #2' }
+                  else if (myRank === 3) { bg = '#9C6B3C'; label = 'RANKING #3' }
+                  else if (myRank === null && isTrending) { bg = '#6B4E9C'; label = 'TRENDING' }
+                  return (
+                    <span className="inline-block mt-2 px-2 py-0.5 text-xs" style={{ background: bg, color: '#fff', fontSize: '0.6rem', letterSpacing: '0.1em', fontWeight: 500 }}>
+                      {label}
+                    </span>
+                  )
+                })()}
+              </div>
               <button onClick={toggleFavorite} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', marginTop: '0.5rem', flexShrink: 0 }}>
                 <Heart size={20} style={{ color: isFavorited ? '#c9b99a' : '#cccccc', fill: isFavorited ? '#c9b99a' : 'none', transition: 'all 0.15s' }} />
               </button>

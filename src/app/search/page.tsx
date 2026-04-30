@@ -6,11 +6,38 @@ import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Hairdresser, Profile } from '@/types'
 
+interface RankingData {
+  rankings: { hairdresser_id: string; rank: number; count: number }[]
+  trending: string[]
+}
+
 const AREAS = ['すべて', '渋谷区', '新宿区', '港区', '中央区', '千代田区', '世田谷区', '目黒区', '品川区', '豊島区', '文京区', '台東区', '杉並区', '中野区']
 const SPECIALTY_TAGS = ['縮毛矯正', '髪質改善', 'カラー', 'ハイライト', 'パーマ', 'ヘアセット', 'くせ毛', 'ショート', 'ロング', 'バージン毛', 'ダメージケア', 'メンズカット', '白髪染め', 'ブリーチ', 'トリートメント']
 
 interface HairdresserWithProfile extends Hairdresser {
   profiles: Profile
+}
+
+function RankingBadge({ hairdresserId, ranking }: { hairdresserId: string; ranking: RankingData | null }) {
+  if (!ranking) return null
+  const entry = ranking.rankings.find(r => r.hairdresser_id === hairdresserId)
+  const isTrending = ranking.trending.includes(hairdresserId)
+  if (!entry && !isTrending) return null
+
+  let bg = '#B8962E'
+  let label = 'RANKING #1'
+  if (entry?.rank === 2) { bg = '#8A8A8A'; label = 'RANKING #2' }
+  else if (entry?.rank === 3) { bg = '#9C6B3C'; label = 'RANKING #3' }
+  else if (!entry && isTrending) { bg = '#6B4E9C'; label = 'TRENDING' }
+
+  return (
+    <span
+      className="absolute top-3 left-3 px-2 py-1 font-medium"
+      style={{ background: bg, color: '#fff', fontSize: '0.6rem', letterSpacing: '0.1em' }}
+    >
+      {label}
+    </span>
+  )
 }
 
 export default function SearchPage() {
@@ -19,11 +46,19 @@ export default function SearchPage() {
   const [areaFilter, setAreaFilter] = useState('すべて')
   const [keyword, setKeyword] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [rankingData, setRankingData] = useState<RankingData | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     loadHairdressers()
   }, [areaFilter])
+
+  useEffect(() => {
+    fetch('/api/hairdresser-ranking')
+      .then(r => r.json())
+      .then(setRankingData)
+      .catch(() => {})
+  }, [])
 
   const loadHairdressers = async () => {
     setLoading(true)
@@ -150,6 +185,7 @@ export default function SearchPage() {
                       <p className="text-xs tracking-widest" style={{ color: '#c9b99a' }}>NO PHOTO</p>
                     </div>
                   )}
+                  <RankingBadge hairdresserId={h.id} ranking={rankingData} />
                   <div className="absolute bottom-3 left-3">
                     <span className="text-xs px-2 py-1 tracking-wider" style={{ background: 'rgba(247,244,239,0.9)', color: '#6b6459' }}>
                       {h.area}
