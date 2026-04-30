@@ -40,13 +40,20 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as Stripe.PaymentIntent
-    const { bookingId, hairdresserAmount, salonAmount, hairdresserStripeId, salonStripeId } = pi.metadata
+    const { bookingId, hairdresserAmount, salonAmount, hairdresserStripeId, salonStripeId, couponId } = pi.metadata
 
     // payment_intent_idで直接検索（キャンセル済みは上書きしない）
     await supabase.from('bookings')
       .update({ payment_status: 'paid' })
       .eq('payment_intent_id', pi.id)
       .neq('status', 'cancelled')
+
+    // クーポン使用済みマーク
+    if (couponId) {
+      await supabase.from('coupons')
+        .update({ used_at: new Date().toISOString(), used: true })
+        .eq('id', couponId)
+    }
 
     if (bookingId) {
 

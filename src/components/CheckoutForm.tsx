@@ -3,7 +3,13 @@ import { useState } from 'react'
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { Loader2 } from 'lucide-react'
 
-export default function CheckoutForm({ totalAmount }: { totalAmount: number }) {
+interface Props {
+  totalAmount: number
+  originalAmount?: number
+  discountAmount?: number
+}
+
+export default function CheckoutForm({ totalAmount, originalAmount, discountAmount }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
@@ -28,6 +34,8 @@ export default function CheckoutForm({ totalAmount }: { totalAmount: number }) {
     }
   }
 
+  const hasDiscount = discountAmount && discountAmount > 0
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement options={{ layout: 'tabs' }} />
@@ -35,7 +43,19 @@ export default function CheckoutForm({ totalAmount }: { totalAmount: number }) {
         <p style={{ fontSize: '0.75rem', color: '#c0392b', fontWeight: 300 }}>{error}</p>
       )}
       <div style={{ paddingTop: '0.5rem', borderTop: '1px solid #ebebeb' }}>
-        <div className="flex justify-between mb-4" style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 300 }}>
+        {hasDiscount && (
+          <>
+            <div className="flex justify-between mb-2" style={{ fontSize: '0.8rem', color: '#999999', fontWeight: 300 }}>
+              <span>小計</span>
+              <span>¥{(originalAmount ?? totalAmount).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between mb-3" style={{ fontSize: '0.8rem', color: '#4a7c59', fontWeight: 300 }}>
+              <span>クーポン割引</span>
+              <span>－¥{discountAmount.toLocaleString()}</span>
+            </div>
+          </>
+        )}
+        <div className="flex justify-between mb-4" style={{ fontSize: '0.875rem', color: '#111111', fontWeight: hasDiscount ? 600 : 300 }}>
           <span>お支払い金額</span>
           <span>¥{totalAmount.toLocaleString()}</span>
         </div>

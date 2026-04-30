@@ -92,7 +92,9 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('coupons').insert({
       user_id: booking.consumer_id,
-      discount_rate: 10,
+      discount_type: 'rate',
+      discount_value: 10,
+      funding_type: 'chairly',
     })
   }
 

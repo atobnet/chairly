@@ -47,7 +47,7 @@ export default function Nav() {
   if (isAuthPage) return null
 
   const links = role === 'consumer'
-    ? [{ href: '/search', label: 'SEARCH' }, { href: '/bookings', label: 'BOOKING' }, { href: '/favorites', label: 'FAVORITES' }]
+    ? [{ href: '/search', label: 'SEARCH' }, { href: '/bookings', label: 'BOOKING' }, { href: '/favorites', label: 'FAVORITES' }, { href: '/mypage', label: 'MYPAGE' }]
     : role === 'hairdresser'
     ? [{ href: '/dashboard', label: 'HOME' }, { href: '/schedule', label: 'SCHEDULE' }, { href: '/requests', label: 'REQUEST' }, { href: '/profile/edit', label: 'PROFILE' }]
     : role === 'salon'
