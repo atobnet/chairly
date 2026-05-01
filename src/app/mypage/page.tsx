@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import StampCardSection from './StampCardSection'
+import WithdrawSection from './WithdrawSection'
 
 interface Coupon {
   id: string
@@ -152,6 +153,8 @@ export default async function MyPage() {
             <p style={{ fontSize: '0.8rem', color: '#cccccc' }}>クーポンはありません。初回ご利用後に発行されます。</p>
           )}
         </section>
+
+        <WithdrawSection />
       </div>
     </div>
   )

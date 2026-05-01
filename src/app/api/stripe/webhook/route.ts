@@ -159,5 +159,14 @@ export async function POST(req: NextRequest) {
       .eq('payment_intent_id', pi.id)
   }
 
+  // account.deleted は Stripe SDK の型定義に含まれないため文字列比較
+  if ((event.type as string) === 'account.deleted') {
+    const account = event.data.object as Stripe.Account
+    await supabase
+      .from('profiles')
+      .update({ stripe_account_id: null })
+      .eq('stripe_account_id', account.id)
+  }
+
   return NextResponse.json({ received: true })
 }

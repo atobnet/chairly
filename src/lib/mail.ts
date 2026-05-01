@@ -94,3 +94,33 @@ export async function sendBookingCancelledMail({
     `,
   })
 }
+
+export async function sendWithdrawConfirmationMail({
+  toEmail,
+  toName,
+  deleteScheduledAt,
+}: {
+  toEmail: string
+  toName: string
+  deleteScheduledAt: string
+}) {
+  const deleteDate = new Date(deleteScheduledAt).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+  await getResend().emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: `【Chairly】退会手続きを受け付けました`,
+    html: `
+      <p>${toName} さん</p>
+      <p>退会手続きを受け付けました。</p>
+      <p>${deleteDate} にアカウントが完全に削除されます。</p>
+      <p>それまでの間は、マイページより退会を取り消すことができます。</p>
+      <p><a href="https://chairly-one.vercel.app/account/withdraw-pending" style="color:#111">退会手続き状況を確認する →</a></p>
+      <hr style="margin:1.5rem 0;border:none;border-top:1px solid #ebebeb">
+      <p style="color:#999;font-size:0.85rem">このメールに心当たりがない場合は、<a href="mailto:support@chairly.jp" style="color:#111">サポート</a>までご連絡ください。</p>
+    `,
+  })
+}
