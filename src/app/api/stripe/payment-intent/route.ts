@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
-  if (booking.status !== 'confirmed') return NextResponse.json({ error: 'Booking not confirmed' }, { status: 400 })
   if (booking.payment_status === 'paid') return NextResponse.json({ error: 'Already paid' }, { status: 400 })
 
   // 美容師のメニュー価格をDBから取得
@@ -123,7 +122,7 @@ export async function POST(req: NextRequest) {
   const paymentIntent = await stripe.paymentIntents.create({
     amount: finalAmount,
     currency: 'jpy',
-    capture_method: 'manual',
+    capture_method: 'automatic',
     metadata,
   })
 

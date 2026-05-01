@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements } from '@stripe/react-stripe-js'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, ChevronLeft, ChevronRight, Check, Heart } from 'lucide-react'
 import Link from 'next/link'
@@ -10,6 +12,9 @@ import type { Hairdresser, Profile, Salon, AvailableSlot, MenuItem, BusinessHour
 import { StampCardPreview } from '@/app/hairdresser/stamp-card/page'
 
 const SalonMap = dynamic(() => import('@/components/SalonMap'), { ssr: false })
+const CheckoutFormDynamic = dynamic(() => import('@/components/CheckoutForm'), { ssr: false })
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 interface HairdresserWithProfile extends Hairdresser {
   profiles: Profile
@@ -144,7 +149,10 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   const [selectedTime, setSelectedTime] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [paymentStep, setPaymentStep] = useState<'form' | 'checkout' | 'confirmed'>('form')
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [paymentAmounts, setPaymentAmounts] = useState<{ total: number; original: number; discount: number } | null>(null)
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [reviews, setReviews] = useState<ReviewWithExtras[]>([])
   const [avgRating, setAvgRating] = useState<number | null>(null)
@@ -171,6 +179,13 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
   const router = useRouter()
 
   useEffect(() => { window.scrollTo(0, 0) }, [id])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'complete') {
+      setPaymentStep('confirmed')
+    }
+  }, [])
 
   useEffect(() => {
     fetch('/api/hairdresser-ranking')
@@ -341,10 +356,27 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
     e.preventDefault()
     if (!selectedSlot || !selectedSalon || !selectedMenu || !currentUserId) { router.push('/login'); return }
     setSubmitting(true)
+
+    // ダブルブッキングチェック
+    const { data: existingBooking } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('hairdresser_availability_id', selectedSlot.hairdresser_availability_id)
+      .in('status', ['pending', 'confirmed'])
+      .in('payment_status', ['paid', 'authorized'])
+      .maybeSingle()
+
+    if (existingBooking) {
+      alert('このスロットはすでに予約済みです。別の時間をお選びください。')
+      setSubmitting(false)
+      return
+    }
+
     const duration = selectedMenu.duration ?? 60
     const [startH, startM] = selectedTime.split(':').map(Number)
     const endMinutes = startH * 60 + startM + duration
     const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}:00`
+
     const { data: newBooking, error } = await supabase.from('bookings').insert({
       hairdresser_availability_id: selectedSlot.hairdresser_availability_id,
       salon_availability_id: selectedSlot.salon_availability_id,
@@ -357,14 +389,28 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
       booked_start_time: selectedTime + ':00',
       booked_end_time: endTime,
     }).select().single()
-    if (error) { alert('予約に失敗しました'); setSubmitting(false); return }
-    if (newBooking) {
-      fetch('/api/notify/booking-request', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: newBooking.id }),
-      }).catch(console.error)
+
+    if (error || !newBooking) { alert('予約に失敗しました'); setSubmitting(false); return }
+
+    // PaymentIntent を取得してインライン決済フォームを表示
+    const piRes = await fetch('/api/stripe/payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId: newBooking.id, couponId: selectedCoupon?.id || null }),
+    })
+    const piData = await piRes.json()
+
+    if (piData.error || !piData.clientSecret) {
+      alert('決済の初期化に失敗しました。もう一度お試しください。')
+      setSubmitting(false)
+      return
     }
-    setSubmitted(true); setSubmitting(false)
+
+    setClientSecret(piData.clientSecret)
+    setPaymentAmounts({ total: piData.totalAmount, original: piData.originalAmount, discount: piData.discountAmount || 0 })
+    setPendingBookingId(newBooking.id)
+    setPaymentStep('checkout')
+    setSubmitting(false)
   }
 
   const getSlotsForDate = (date: Date) => {
@@ -854,15 +900,30 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
         </div>
 
         {/* 確認・送信 */}
-        {submitted ? (
+        {paymentStep === 'confirmed' ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', border: '1px solid #111111' }}>
-            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#111111', marginBottom: '1rem', fontWeight: 300 }}>REQUEST SENT</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 100, marginBottom: '1rem' }}>予約リクエストを送信しました</h3>
-            <p style={{ fontSize: '0.75rem', color: '#999999', marginBottom: '1.5rem', fontWeight: 300 }}>美容師からの確認をお待ちください</p>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#111111', marginBottom: '1rem', fontWeight: 300 }}>BOOKING CONFIRMED</p>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 100, marginBottom: '1rem' }}>予約が確定しました</h3>
+            <p style={{ fontSize: '0.75rem', color: '#999999', marginBottom: '1.5rem', fontWeight: 300 }}>確認メールをご確認ください</p>
             <Link href="/bookings" style={{ fontSize: '0.75rem', color: '#999999', borderBottom: '1px solid #999999', textDecoration: 'none', paddingBottom: '2px', fontWeight: 300 }}>
               予約一覧を確認 →
             </Link>
           </div>
+        ) : paymentStep === 'checkout' && clientSecret && paymentAmounts ? (
+          <Elements stripe={stripePromise} options={{ clientSecret, locale: 'ja' }}>
+            <div style={{ border: '1px solid #ebebeb', padding: '2rem' }}>
+              <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>PAYMENT</p>
+              <CheckoutFormDynamic
+                totalAmount={paymentAmounts.total}
+                originalAmount={paymentAmounts.original}
+                discountAmount={paymentAmounts.discount}
+                returnUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/hairdressers/${id}?payment=complete`}
+              />
+              <p style={{ marginTop: '1rem', fontSize: '0.65rem', color: '#cccccc', textAlign: 'center', fontWeight: 300 }}>
+                Powered by Stripe — カード情報は暗号化されて送信されます
+              </p>
+            </div>
+          </Elements>
         ) : selectedSlot && selectedTime && selectedMenu ? (
           <div style={{ border: '1px solid #ebebeb', padding: '2rem' }}>
             <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', color: '#cccccc', marginBottom: '1.5rem', fontWeight: 300 }}>CONFIRM BOOKING</p>
@@ -963,7 +1024,7 @@ export default function HairdresserDetailPage({ params }: { params: Promise<{ id
                 <button type="submit" disabled={submitting}
                   style={{ flex: 2, padding: '0.75rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#ffffff', background: '#111111', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 300, opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   {submitting && <Loader2 size={12} className="animate-spin" />}
-                  予約リクエストを送る
+                  次へ（決済）
                 </button>
               </div>
             </form>

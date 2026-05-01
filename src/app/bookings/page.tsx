@@ -268,14 +268,6 @@ export default function BookingsPage() {
                       </div>
                       {b.menu && <p style={{ fontSize: '0.75rem', marginBottom: '0.75rem', color: '#999999', fontWeight: 300 }}>{b.menu}</p>}
                       <div className="flex items-center gap-4 flex-wrap">
-                        {b.status === 'confirmed' && !isPaid(b) && (
-                          <Link
-                            href={`/payment/${b.id}`}
-                            style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 300, background: '#111111', border: '1px solid #111111', padding: '0.375rem 0.875rem', textDecoration: 'none', letterSpacing: '0.1em' }}
-                          >
-                            決済する
-                          </Link>
-                        )}
                         {b.status === 'confirmed' && isPaid(b) && (
                           <span style={{ fontSize: '0.6rem', color: '#4a7c59', letterSpacing: '0.15em', fontWeight: 300 }}>決済済み</span>
                         )}

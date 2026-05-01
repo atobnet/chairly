@@ -76,20 +76,6 @@ export default function RequestsPage() {
     load()
   }, [])
 
-  const handleConfirm = async (bookingId: string) => {
-    await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId)
-    const req = requests.find(r => r.id === bookingId)
-    if (req?.slot_id) {
-      await supabase.from('slots').update({ status: 'booked' }).eq('id', req.slot_id)
-    }
-    setRequests(prev => prev.map(r => r.id === bookingId ? { ...r, status: 'confirmed' } : r))
-    fetch('/api/notify/booking-confirmed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingId }),
-    }).catch(console.error)
-  }
-
   const handleCancel = async (bookingId: string) => {
     fetch('/api/notify/booking-cancelled', {
       method: 'POST',
@@ -127,7 +113,7 @@ export default function RequestsPage() {
     return ''
   }
 
-  const statusLabel: Record<string, string> = { pending: '確認待ち', confirmed: '確定', cancelled: 'キャンセル' }
+  const statusLabel: Record<string, string> = { pending: '決済待ち', confirmed: '確定', cancelled: 'キャンセル' }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#ffffff' }}>
@@ -187,10 +173,6 @@ export default function RequestsPage() {
                     <button onClick={() => handleCancel(req.id)}
                       style={{ flex: 1, padding: '0.625rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #ebebeb', color: '#999999', background: 'transparent', cursor: 'pointer', fontWeight: 300 }}>
                       キャンセル
-                    </button>
-                    <button onClick={() => handleConfirm(req.id)}
-                      style={{ flex: 1, padding: '0.625rem 0', fontSize: '0.65rem', letterSpacing: '0.15em', border: '1px solid #111111', color: '#ffffff', background: '#111111', cursor: 'pointer', fontWeight: 300 }}>
-                      確認する
                     </button>
                   </div>
                 )}

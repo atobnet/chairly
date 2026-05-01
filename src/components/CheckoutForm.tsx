@@ -7,9 +7,10 @@ interface Props {
   totalAmount: number
   originalAmount?: number
   discountAmount?: number
+  returnUrl?: string
 }
 
-export default function CheckoutForm({ totalAmount, originalAmount, discountAmount }: Props) {
+export default function CheckoutForm({ totalAmount, originalAmount, discountAmount, returnUrl }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
@@ -24,7 +25,7 @@ export default function CheckoutForm({ totalAmount, originalAmount, discountAmou
     const { error: submitError } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/bookings?payment=complete`,
+        return_url: returnUrl || `${window.location.origin}/bookings?payment=complete`,
       },
     })
 

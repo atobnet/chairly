@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { getStripe } from '@/lib/stripe'
 import { createServiceClient } from '@/lib/supabase/service'
+import { sendBookingConfirmedMail } from '@/lib/mail'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
     const { bookingId, hairdresserAmount, salonAmount, hairdresserStripeId, salonStripeId, couponId } = pi.metadata
 
     await supabase.from('bookings')
-      .update({ payment_status: 'paid' })
+      .update({ payment_status: 'paid', status: 'confirmed' })
       .eq('payment_intent_id', pi.id)
       .neq('status', 'cancelled')
 
@@ -129,6 +131,47 @@ export async function POST(req: NextRequest) {
               action: 'earn',
             })
           }
+        }
+
+        // 確認メール送信
+        try {
+          const { data: bookingForMail } = await supabase
+            .from('bookings')
+            .select(`
+              consumer_id, booked_date, booked_start_time,
+              profiles!bookings_consumer_id_fkey(name),
+              salons(profiles(name))
+            `)
+            .eq('id', bookingId)
+            .single()
+
+          if (bookingForMail?.consumer_id) {
+            const admin = createAdminClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!,
+              { auth: { autoRefreshToken: false, persistSession: false } }
+            )
+            const { data: { user: consumerUser } } = await admin.auth.admin.getUserById(bookingForMail.consumer_id)
+
+            let hairdresserName = '美容師'
+            if (hairdresserId) {
+              const { data: hdProfile } = await supabase.from('profiles').select('name').eq('id', hairdresserId).single()
+              hairdresserName = hdProfile?.name || '美容師'
+            }
+
+            if (consumerUser?.email) {
+              await sendBookingConfirmedMail({
+                toEmail: consumerUser.email,
+                toName: (bookingForMail.profiles as { name?: string } | null)?.name || 'お客様',
+                hairdresserName,
+                date: bookingForMail.booked_date || '',
+                time: (bookingForMail.booked_start_time || '').slice(0, 5),
+                salonName: (bookingForMail.salons as { profiles?: { name?: string } } | null)?.profiles?.name || '',
+              })
+            }
+          }
+        } catch (e) {
+          console.error('Booking confirmed mail error:', e)
         }
       }
 
